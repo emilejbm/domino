@@ -1,0 +1,46 @@
+server
+
+
+router
+handles:
+    /juegadomino
+    GET:
+        return landing page
+    POST:
+        change player info
+        create game -> enter game
+        close game
+        enter game
+    
+
+    /juegadomino/#GAMECODE
+    POST:
+        leave game
+        move
+
+
+client
+-- connect to game
+    * juegadomino/#GAMECODE (GET)
+-- disconnect from match
+    * handle as an error - juegadomino/#GAMECODE (GET) (REDIRECT)
+-- make a move
+    * juegadomino/#GAMECODE (POST)
+-- change user info (POST) (name)
+    * /juegadomino
+-- land on game
+    * /juegadomino
+
+
+downsides:
+
+
+
+bugs
+deleting user name does not reroute from main menu to create user
+
+todo
+show server name and password ?
+logic for connecting players to lobby
+if 4 players connect to lobby start game (button?)
+Fill with bots (starts game)

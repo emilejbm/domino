@@ -1,0 +1,96 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --red: hsl(0, 93%, 59%);
+  --yellow: hsl(55, 93%, 59%);
+  --green: hsl(122, 93%, 59%);
+  --blue: hsl(224, 93%, 59%);
+
+  --primary: #020f6c;
+  --secondary: cyan;
+  --panel-bg: rgba(0, 0, 0, 0.3);
+
+  --cardWidth: 150px;
+  --cardWidthBigger: 200px;
+
+  --fontBig: 7rem;
+  --fontSmall: 3rem;
+}
+
+@media screen and (max-width: 1600px) {
+  :root {
+    --cardWidth: 100px;
+    --cardWidthBigger: 130px;
+
+    --fontBig: 5rem;
+    --fontSmall: 2rem;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  :root {
+    --cardWidth: 70px;
+    --cardWidthBigger: 100px;
+
+    --fontBig: 4rem;
+    --fontSmall: 1.4rem;
+  }
+}
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap");
+
+body {
+  margin: 0;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  /* font-family: "Cabin", sans-serif !important; */
+  font-family: "Roboto Mono", monospace !important;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Old versions of Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome, Edge, Opera and Firefox */
+}
+
+.card-container {
+  perspective: 800px;
+  width: var(--cardWidth);
+}
+
+/* width */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #161d3f;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+  background-color: black;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #161d3f;
+}
