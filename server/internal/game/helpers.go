@@ -12,7 +12,6 @@ import (
 
 func PrintAllLobbyInfo() {
 	if len(Lobbies) > 0 {
-		log.Println("something found")
 		for gameCode, lobby := range Lobbies {
 			log.Println("printing lobby info", gameCode)
 			for _, p := range lobby.Players {
@@ -24,6 +23,17 @@ func PrintAllLobbyInfo() {
 	}
 }
 
+func playerInActiveGame(player *Player) bool {
+	for _, g := range ActiveGames {
+		for _, p := range g.Players {
+			if p == player {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func containsDomino(hand []Domino, domino Domino) bool {
 	for _, d := range hand {
 		if d == domino || (d.Left == domino.Right && d.Right == domino.Left) { //check for both orientations
@@ -31,6 +41,17 @@ func containsDomino(hand []Domino, domino Domino) bool {
 		}
 	}
 	return false
+}
+
+func (g *Game) GetPlayerWithDoubleSix() *Player {
+	for _, p := range g.Players {
+		doubleSix := &Domino{Left: 6, Right: 6}
+		if containsDomino(p.Hand, *doubleSix) {
+			return p
+		}
+	}
+	log.Println("no one has double six?")
+	return nil
 }
 
 func CreateDominoes() []Domino {
@@ -43,11 +64,13 @@ func CreateDominoes() []Domino {
 	return dominoes
 }
 
-func ShuffleDominoes(dominoes []Domino) {
+func shuffleDominoes() []Domino {
+	dominoes := CreateDominoes()
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(dominoes), func(i, j int) {
 		dominoes[i], dominoes[j] = dominoes[j], dominoes[i]
 	})
+	return dominoes
 }
 
 func DealDominoes(dominoes []Domino, players []*Player) {
@@ -69,9 +92,9 @@ func generateGameCode() (string, error) {
 
 	rand.Seed(time.Now().UnixNano())
 
-	existingSet := make(map[string]struct{}, len(activeGames))
-	for _, game := range activeGames {
-		existingSet[game.Code] = struct{}{}
+	existingSet := make(map[string]struct{}, len(ActiveGames))
+	for _, game := range ActiveGames {
+		existingSet[game.GameCode] = struct{}{}
 	}
 
 	// could add for loop to retry for certain amount of attempts

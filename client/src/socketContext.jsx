@@ -1,16 +1,21 @@
 import React, { useState, createContext, useContext, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from "uuid";
 
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
     const socketRef = useRef(null);
     const [socket, setSocket] = useState(null);
-    const [context, setContext] = useState("lobby"); // "lobby" or "game"
+    const [context, setContext] = useState("lobby");
+    const [clientId, setClientID] = useState(localStorage.getItem("clientId"));
+    if (!clientId) {
+        setClientID(uuidv4());
+        localStorage.setItem("clientId", clientId);
+    }
 
     useEffect(() => {
         const connectWebSocket = () => {
-            console.log("try to connect ws")
-            const newSocket = new WebSocket(`ws://localhost:8080/ws`);
+            const newSocket = new WebSocket(`ws://localhost:8080/ws?clientId=${clientId}`);
             socketRef.current = newSocket;
             setSocket(newSocket);
 
@@ -35,7 +40,7 @@ export const SocketProvider = ({ children }) => {
                 socketRef.current.close();
             }
         };
-    }, []); // connect only once
+    }, []);
 
     const sendMessage = (message) => {
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -44,15 +49,7 @@ export const SocketProvider = ({ children }) => {
     };
 
     const handleMessage = (event) => {
-        if (context === "lobby") {
-            // Handle lobby messages
-            const message = JSON.parse(event.data);
-            // ... (your lobby message handling logic)
-        } else if (context === "game") {
-            // Handle game messages
-            const message = JSON.parse(event.data);
-            // ... (your game message handling logic)
-        }
+        const message = JSON.parse(event.data);
     };
 
     useEffect(() => {

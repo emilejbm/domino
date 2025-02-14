@@ -32,10 +32,6 @@ var Lobbies = make(map[string]*Lobby)
 
 // ------------------ Helper functions ------------------ //
 
-// func GetLobbies() map[string]*Lobby {
-// 	return lobbies
-// }
-
 // get lobby if it exists, try to create if not
 func GetOrCreateLobby(gameCode ...string) (*Lobby, error) {
 	LobbiesMu.Lock()
@@ -78,10 +74,9 @@ func GetLobby(gameCode string) *Lobby {
 // ------------------ Websocket stuff ------------------ //
 
 func (l *Lobby) HandleJoinLobby(conn *websocket.Conn, playerName string, lobbyCode string, clientID string) error {
-	log.Println("starts")
 	l.Mu.Lock()
+	defer l.Mu.Unlock()
 
-	log.Println("does not get past this")
 	// check if player name already exists
 	for _, p := range l.Players {
 		if p.Name == playerName {
@@ -91,39 +86,31 @@ func (l *Lobby) HandleJoinLobby(conn *websocket.Conn, playerName string, lobbyCo
 
 	player := &Player{Name: playerName, IsBot: false, Connection: conn, ID: clientID}
 	l.Players = append(l.Players, player)
-	l.Mu.Unlock()
 
-	l.BroadcastLobbyUpdate()
+	l.BroadcastPlayersToLobby()
 	return nil
 }
 
-func (l *Lobby) HandleLeaveLobby(clientID string) {
-	l.Mu.Lock()
-	defer l.Mu.Unlock()
-
+func (l *Lobby) LeaveLobby(clientID string) {
 	for i, p := range l.Players {
-		if p.ID == clientID {
+		if clientID == p.ID {
 			l.Players = append(l.Players[:i], l.Players[i+1:]...)
 			log.Println("Player", p.ID, "left the lobby")
 			break
 		}
 	}
-	if len(l.Players) > 0 {
-		l.BroadcastLobbyUpdate()
-	}
+
+	l.BroadcastPlayersToLobby()
 }
 
 // broadcast player names in lobby
-func (l *Lobby) BroadcastLobbyUpdate() {
-	// l.Mu.Lock()
-	// defer l.Mu.Unlock()
-
+func (l *Lobby) BroadcastPlayersToLobby() {
 	playerNames := make([]string, len(l.Players))
 	for i, p := range l.Players {
 		playerNames[i] = p.Name
 	}
 
-	message := LobbyMessage{Type: "update", Payload: playerNames}
+	message := LobbyMessage{Type: "players-in-lobby", Payload: playerNames}
 	jsonMessage, err := json.Marshal(message)
 	if err != nil {
 		log.Println("error marshaling lobby update")

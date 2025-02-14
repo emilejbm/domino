@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/emilejbm/domino/server/internal/game"
 	"github.com/google/uuid"
@@ -30,6 +31,52 @@ func generateClientID() string {
 	return uuid.New().String()
 }
 
+func markClientDisconnected(clientID string, conn *websocket.Conn) {
+	connectionsMu.Lock()
+	delete(connections, conn)
+	connectionsMu.Unlock()
+
+	for _, g := range game.ActiveGames {
+		for _, player := range g.Players {
+			if player.ID == clientID {
+				player.Connected = false
+				log.Println("Player", clientID, "disconnected but not removed. Waiting for reconnection...")
+				go removeClientAfterTimeout(g, player, 15*time.Second)
+				return
+			}
+		}
+	}
+}
+
+func removeClientAfterTimeout(g *game.Game, player *game.Player, timeout time.Duration) {
+	time.Sleep(timeout)
+	game.ActiveGamesMu.Lock()
+	defer game.ActiveGamesMu.Unlock()
+
+	if !player.Connected {
+		log.Println("Removing player", player.ID, "after timeout")
+		g.LeaveGame(player.ID)
+		l := game.Lobbies[g.GameCode]
+		l.LeaveLobby(player.ID)
+	}
+}
+
+func checkIfReconnection(conn *websocket.Conn, clientID string) {
+	game.ActiveGamesMu.Lock()
+	defer game.ActiveGamesMu.Unlock()
+
+	for _, l := range game.Lobbies { // iter through games?
+		for _, player := range l.Players {
+			if player.ID == clientID {
+				log.Println("Player", clientID, "is reconnecting...")
+				player.Connection = conn
+				player.Connected = true
+				return
+			}
+		}
+	}
+}
+
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Println("handling web socket")
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -38,38 +85,21 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("path", r.URL.Path)
-	clientID := generateClientID()
-	connections[conn] = clientID
+	clientID := r.URL.Query().Get("clientId")
+	if clientID == "" {
+		clientID = generateClientID()
+	}
+
 	defer func() {
-		game.PrintAllLobbyInfo()
-		connectionsMu.Lock()
-		clientID, ok := connections[conn]
-		if ok {
-			delete(connections, conn)
-			game.LobbiesMu.Lock()
-			defer game.LobbiesMu.Unlock()
-			var leftLobby bool
-			for _, lobby := range game.Lobbies {
-				for _, player := range lobby.Players {
-					if player.ID == clientID {
-						lobby.HandleLeaveLobby(clientID)
-						if len(lobby.Players) == 0 {
-							delete(game.Lobbies, lobby.GameCode)
-						}
-						leftLobby = true
-						break
-					}
-				}
-				if leftLobby {
-					break
-				}
-			}
-		}
-		connectionsMu.Unlock()
-		conn.Close()
-		game.PrintAllLobbyInfo()
+		markClientDisconnected(clientID, conn)
 	}()
+
+	connectionsMu.Lock()
+	connections[conn] = clientID
+	connectionsMu.Unlock()
+
+	// check if client is rejoining
+	checkIfReconnection(conn, clientID)
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -91,32 +121,100 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID string) {
 	switch msg.Type {
-	case "join":
+	case "join-lobby":
 		payload, payloadOk := msg.Payload.(map[string]interface{})
 		playerName, nameOk := payload["playerName"].(string)
 		lobbyCode, codeOk := payload["lobbyCode"].(string)
 		if !payloadOk || !nameOk || !codeOk {
-			log.Println("join payload is incorrectly formatted")
-			return
+			log.Println("join-lobby payload is incorrectly formatted")
+			break
 		}
 		log.Println("player name", playerName, "lobby code", lobbyCode)
 		lobby, err := game.GetOrCreateLobby(lobbyCode)
 		if err != nil {
 			log.Println("error getting / creating lobby", err)
-			return
+			break
 		}
 		lobby.HandleJoinLobby(conn, playerName, lobbyCode, clientID)
-	case "leave":
-		log.Println("got the leave message")
+
+	case "leave-lobby":
 		payload, payloadOk := msg.Payload.(map[string]interface{})
-		_, nameOk := payload["playerName"].(string)
 		lobbyCode, codeOk := payload["lobbyCode"].(string)
-		if !payloadOk || !nameOk || !codeOk {
-			log.Println("join payload is incorrectly formatted")
-			return
+		if !payloadOk || !codeOk {
+			log.Println("leave-lobby payload is incorrectly formatted")
+			break
 		}
 		lobby := game.GetLobby(lobbyCode)
-		lobby.HandleLeaveLobby(clientID)
+		lobby.LeaveLobby(clientID)
+
+	case "join-game":
+		payload, payloadOk := msg.Payload.(map[string]interface{})
+		gameCode, codeOk := payload["gameCode"].(string)
+		if !payloadOk || !codeOk {
+			log.Println("join-game payload is incorrectly formatted")
+			break
+		}
+
+		g, gameExists := game.ActiveGames[gameCode]
+		if !gameExists {
+			// create game from lobby info
+			lobby := game.GetLobby(gameCode)
+			if lobby == nil {
+				log.Println("lobby is nil")
+				// broadcast the game does not exist
+				break
+			}
+			newGame, err := game.CreateGameFromLobby(lobby)
+			if err != nil {
+				log.Println("something happened creating game")
+				break
+			}
+			newGame.BroadcastGameState()
+		} else {
+			log.Println("game already exists")
+			g.BroadcastGameState()
+		}
+
+	case "start-game":
+		// init game (shuffle, send dominoes, alert starting player to make first move)
+		payload, payloadOk := msg.Payload.(map[string]interface{})
+		gameCode, codeOk := payload["gameCode"].(string)
+		if !payloadOk || !codeOk {
+			log.Println("start-game payload is incorrectly formatted")
+			break
+		}
+
+		currGame := game.GetGame(gameCode)
+		if currGame == nil {
+			log.Println("no game exists")
+			break
+		}
+
+		currGame.InitGame()
+
+	case "leave-game": // entirely handled by defer of HandleWebSocket?
+		// payload, payloadOk := msg.Payload.(map[string]interface{})
+		// //_, nameOk := payload["playerName"].(string)
+		// gameCode, codeOk := payload["gameCode"].(string)
+		// if !payloadOk || !codeOk {
+		// 	log.Println("leave-lobby payload is incorrectly formatted")
+		// 	break
+		// }
+		// g := game.GetGame(gameCode)
+		// g.LeaveGame(clientID)
+
+	case "game-action":
+		// check if valid move
+
+		// if not broadcast to that player invalid move
+
+		// else broadcast to everyone the move he just made
+
+		// update the gameboard
+
+		// check if game end
+		// broadcast game end
+
 	default:
 		log.Println("unknown msg type:", msg.Type, msg.Payload)
 	}

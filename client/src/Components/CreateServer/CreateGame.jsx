@@ -10,9 +10,8 @@ import { useNavigate } from "react-router-dom";
 
 import Typography from "../Shared/Typography/Typography";
 import { useDispatch } from "../../utils/hooks";
-import { createGame } from "../../stores/redux/gameSlice";
+//import { createGame } from "../../stores/redux/gameSlice";
 
-import { useSocket } from '../../SocketProvider';
 
 
 const CreateGame = () => {
@@ -20,23 +19,9 @@ const CreateGame = () => {
   const [serverPassword, setServerPassword] = React.useState("");
   const [isPrivate, setIsPrivate] = React.useState(false);
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const socket = useSocket();
+  //const dispatch = useDispatch();
 
   const handleCreateGame = async () => {
-
-    //const playerId = await API.createServer(serverName, serverPassword);
-    //dispatch(setPlayerId(playerId));
-    
-    // dispatch(setInLobby(true)();
-    dispatch(createGame(serverName, serverPassword))
-    socket.on("joinGame", () => {
-      // count how many players there are
-      // fill w bots
-      // send player list to server
-      // wait for backend 
-    })
-    navigate("/waiting-lobby");
   };
 
   return (
@@ -99,11 +84,11 @@ const CreateGame = () => {
         )}
 
         <Grid item xs={12} md={10} lg={8}>
-          {((isPrivate && serverName && serverPassword) ||
+          {/* {((isPrivate && serverName && serverPassword) ||
             (!isPrivate && serverName)) && (
-            <Button onClick={handleCreateGame}>Create Game</Button>
-          )}
-        </Grid>
+           <Button >Create Game</Button>
+          )} */}
+       </Grid>
       </Grid>
     </Paper>
   );

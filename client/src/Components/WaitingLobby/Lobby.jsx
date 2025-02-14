@@ -19,18 +19,27 @@ const Span = styled.span`
 const Lobby = () => {
 
   const { gameCode } = useParams()
+  const { socket, sendMessage, setContext } = useSocket();
   const [playerName, _] = useState(localStorage.getItem("playerName"))
   const [players, setPlayers] = useState([]);
-  const { socket, sendMessage, setContext } = useSocket();
   const location = useLocation();
+  const navigate = useNavigate();
 
+  const sendJoinGameMessage = () => {
+    sendMessage({ type: "join-game", payload: {gameCode}});
+  }
+
+  const sendJoinLobbyMessage = () => {
+    sendMessage({type: "join-lobby", payload: { playerName: playerName, lobbyCode: gameCode} })
+  }
+ 
   useEffect(() => {
     let socketInstance = socket;
     if(!socketInstance) return;
     const handleLobbyMessage = (event) => {
       const message = JSON.parse(event.data);
       switch (message.type){    
-        case "update":
+        case "players-in-lobby":
           setPlayers(message.payload);
           break;
         default:
@@ -38,23 +47,19 @@ const Lobby = () => {
       }
     }
 
-    const sendJoinMessage = () => {
-      sendMessage({type: "join", payload: { playerName: playerName, lobbyCode: gameCode} })
-    }
-
     socketInstance.addEventListener("message", handleLobbyMessage)
 
     if (socketInstance.readyState === WebSocket.OPEN){
-      sendJoinMessage();
+      sendJoinLobbyMessage();
     } else {
-      socketInstance.addEventListener("open", sendJoinMessage)
+      socketInstance.addEventListener("open", sendJoinLobbyMessage)
     } 
 
     // cleanup
     return () => { 
         if (socketInstance) {
           socketInstance.removeEventListener("message", handleLobbyMessage);
-          sendMessage({ type: "leave", payload: {playerName, lobbyCode: gameCode} });
+          // sendMessage({ type: "leave-lobby", payload: {lobbyCode: gameCode} });
         }
     };
   }, [socket, gameCode, playerName, sendMessage, setContext, location]);
@@ -64,7 +69,8 @@ const Lobby = () => {
 }, []);
 
   const handleStartGame = () => {
-      sendMessage({ type: "start" });
+    sendJoinGameMessage() // tell the server player is going to start the game (player does not get deleted)
+      navigate(`/game/${gameCode}`)
   };
 
   return (

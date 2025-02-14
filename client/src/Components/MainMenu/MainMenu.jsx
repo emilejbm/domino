@@ -57,18 +57,6 @@ const MainMenu = () => {
     }
   }
 
-  // const onPlayOnline = () => {
-  //   API.playOnline(true);
-  // };
-
-  // const onPlayOffline = async () => {
-  //   API.playOnline(false);
-  //   const playerId = await API.joinServer();
-  //   dispatch(setPlayerId(playerId));
-  //   dispatch(setInLobby(true));
-  //   navigate("/waiting-lobby");
-  // };
-
   return (
     <Paper key="main-menu">
       <Grid container direction="column" alignItems="center" justifyContent="center" spacing={4}>
