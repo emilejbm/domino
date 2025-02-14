@@ -44,9 +44,8 @@ function App() {
           <Route path="/" element={<StartPage />} />
           <Route path="/main-menu" element={<MainMenu />} />
           <Route path="/create-user" element={<CreateUser />}/>
-          <Route path="/create-game" element={<CreateServer/>} />
-          <Route path="/waiting-lobby" element={<Lobby />}/>
-          <Route path="/game" element={<Game />} />
+          <Route path="/lobby/:gameCode" element={<Lobby />}/>
+          <Route path="/mesa/:gameCode" element={<Game />} />
         </Routes>
       </BrowserRouter>
       </Provider>

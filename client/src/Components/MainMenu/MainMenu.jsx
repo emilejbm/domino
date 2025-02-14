@@ -1,26 +1,60 @@
 import React from "react";
+
 import Grid from "@mui/material/Grid2";
 import Paper from "../Shared/Paper/Paper";
 import Button from "../Shared/Button/Button";
 import Typography from "../Shared/Typography/Typography";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams} from "react-router-dom";
 // import API from "../../api/API";
 import { useDispatch } from "../../utils/hooks.ts";
 import { setInLobby, setPlayerId } from "../../stores/redux/gameSlice";
-
-import { useSocket } from '../../SocketProvider';
 
 const style = {
   color: "#fff",
 };
 
+const serverUrl = "http://localhost:8080"
+
 const MainMenu = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const socket = useSocket();
-  function handleCreateGame() {
-    dispatch()
-    socket.emit("") // only cal the socket emits from the dispatch functions
+  const params = useParams()
+
+  const [playerName, _] = useState(localStorage.getItem("playerName"));
+  const [isCreatingGame, setIsCreatingGame] = useState(false);
+
+  // Function to handle creating a game
+  const handleCreateGame = async () => {
+    setIsCreatingGame(true);
+    try {
+      const response = await fetch(`${serverUrl}/create-lobby`, { method: 'GET' });
+      if (response.ok) {
+        const { gameCode } = await response.json();
+        navigate(`/lobby/${gameCode}`);
+      } else {
+        alert('Error creating game');
+      }
+    } catch (error) {
+      console.error('Error creating game:', error);
+      alert('Error creating game');
+    }
+    setIsCreatingGame(false);
+  };
+
+  const handleJoinGame = async () => {
+    const response = await fetch("/join-game", {
+      method: "POST", 
+      body: JSON.stringify({ gameCode: params.gameCode, newPlayer: playerName }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+    if (response.ok) {
+      navigate(`/lobby/${params.gameCode}`)
+    } else {
+      console.error("sum happened")    
+    }
   }
 
   // const onPlayOnline = () => {
@@ -52,7 +86,8 @@ const MainMenu = () => {
           <Grid item xs={12} md={5}>
             <Button
               style={{ width: "80%" }}
-              href="/create-game"
+              onClick={handleCreateGame}
+              disabled={isCreatingGame}
             >
               <img src="assets/icons/add.svg" alt="" />
               <Typography>Create A Game</Typography>
@@ -65,8 +100,7 @@ const MainMenu = () => {
             <Button
              // disabled={!API.isOnline}
               style={{ width: "80%" }}
-              href="/join-server"
-             // onClick={onPlayOnline}
+              onClick={handleJoinGame}
             >
               <img src="assets/icons/glob.svg" alt="" />
               <Typography>Join A Game</Typography>

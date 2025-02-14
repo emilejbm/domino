@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Paper from "../Shared/Paper/Paper";
 import Avatar from "../Shared/Avatar/Avatar";
 import Typography from "../Shared/Typography/Typography";
@@ -7,10 +7,8 @@ import Stack from "@mui/material/Stack";
 import Button from "../Shared/Button/Button";
 import WaitingTextAnimation from "./WaitingTextAnimation";
 import styled from "styled-components";
-import { useDispatch, useSelector } from "../../utils/hooks";
-import { init, setInLobby } from "../../stores/redux/gameSlice";
-import { useNavigate, useLocation, Navigate } from "react-router-dom";
-// import API from "../../api/API";
+import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { useSocket } from "../../socketContext";
 
 const Span = styled.span`
   color: #f37006;
@@ -18,25 +16,56 @@ const Span = styled.span`
   font-weight: bold;
   font-size: larger;
 `;
-
 const Lobby = () => {
-  const [players, setPlayers] = React.useState([]);
 
-  // const inLobby = useSelector((state) => state.game.inLobby);
-
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const { gameCode } = useParams()
+  const [playerName, _] = useState(localStorage.getItem("playerName"))
+  const [players, setPlayers] = useState([]);
+  const { socket, sendMessage, setContext } = useSocket();
   const location = useLocation();
 
-  const handleStartGame = () => {
-    // get players
-    // socket.emit("joinGame", { name: username, id: generateUniqueId() });
-    // comm to api
-    navigate("/game")
-  } 
+  useEffect(() => {
+    let socketInstance = socket;
+    if(!socketInstance) return;
+    const handleLobbyMessage = (event) => {
+      const message = JSON.parse(event.data);
+      switch (message.type){    
+        case "update":
+          setPlayers(message.payload);
+          break;
+        default:
+          break;
+      }
+    }
 
-  // if (location.pathname === "/waiting-lobby" && !inLobby)
-  //   return <Navigate replace to="/main-menu" />;
+    const sendJoinMessage = () => {
+      sendMessage({type: "join", payload: { playerName: playerName, lobbyCode: gameCode} })
+    }
+
+    socketInstance.addEventListener("message", handleLobbyMessage)
+
+    if (socketInstance.readyState === WebSocket.OPEN){
+      sendJoinMessage();
+    } else {
+      socketInstance.addEventListener("open", sendJoinMessage)
+    } 
+
+    // cleanup
+    return () => { 
+        if (socketInstance) {
+          socketInstance.removeEventListener("message", handleLobbyMessage);
+          sendMessage({ type: "leave", payload: {playerName, lobbyCode: gameCode} });
+        }
+    };
+  }, [socket, gameCode, playerName, sendMessage, setContext, location]);
+
+  useEffect(() => {
+    setContext("lobby");
+}, []);
+
+  const handleStartGame = () => {
+      sendMessage({ type: "start" });
+  };
 
   return (
     <Paper>
@@ -63,16 +92,16 @@ const Lobby = () => {
           gap={6}
           xs={12}
         >
-          {players.map((player) => {
+          {players.length > 0 && players.map((player) => {
             return (
               <Stack
-                key={player.id}
+                key={player}
                 justifyContent="center"
                 alignItems="center"
                 spacing={1}
               >
-                <Avatar seed={`${player.name}${player.img}`} />
-                <Typography>{player.name}</Typography>
+                {/* <Avatar seed={`${player.name}${player.img}`} /> */}
+                <Typography>{player}</Typography>
               </Stack>
             );
           })}

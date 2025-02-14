@@ -4,16 +4,14 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import CssBaseline from "@mui/material/CssBaseline";
-import { SocketProvider } from "./SocketProvider";
+import { SocketProvider } from './socketContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
+  <SocketProvider>
     <CssBaseline />
-      <SocketProvider >
         <App />
-      </SocketProvider>
-  </React.StrictMode>,
+  </SocketProvider>
 );
 
 // If you want to start measuring performance in your app, pass a function

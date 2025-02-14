@@ -57,7 +57,7 @@ export default function StartPage() {
         }}
         className="img"
       >
-        <img src="assets/images/uno-logo.png" alt="UNO Logo" />
+        <img src="assets/images/doblesei.png" alt="UNO Logo" />
       </motion.div>
       <Typography
         variant="h4"
