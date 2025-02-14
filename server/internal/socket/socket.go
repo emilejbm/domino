@@ -1,79 +1,123 @@
 package socket
 
 import (
+	"encoding/json"
 	"log"
+	"net/http"
 	"sync"
 
-	socketio "github.com/googollee/go-socket.io"
+	"github.com/emilejbm/domino/server/internal/game"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
-func CreateSocketHandler(gameLock *sync.Mutex) (*socketio.Server, error) {
-	socket := socketio.NewServer(nil)
+type SocketMessage struct {
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
+}
 
-	if socket == nil {
-		log.Fatal("socket io failed to get created")
-		return nil, nil
+var connections = make(map[*websocket.Conn]string)
+var connectionsMu sync.Mutex
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // for dev
+		// return r.Host == "yourdomain.com"
+	},
+}
+
+func generateClientID() string {
+	return uuid.New().String()
+}
+
+func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	log.Println("handling web socket")
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("upgrade:", err)
+		return
 	}
 
-	socket.OnConnect("/", func(s socketio.Conn) error {
-		log.Println("New connection: ", s.ID())
-		s.Emit("logMessage")
-		return nil
-	})
+	log.Println("path", r.URL.Path)
+	clientID := generateClientID()
+	connections[conn] = clientID
+	defer func() {
+		game.PrintAllLobbyInfo()
+		connectionsMu.Lock()
+		clientID, ok := connections[conn]
+		if ok {
+			delete(connections, conn)
+			game.LobbiesMu.Lock()
+			defer game.LobbiesMu.Unlock()
+			var leftLobby bool
+			for _, lobby := range game.Lobbies {
+				for _, player := range lobby.Players {
+					if player.ID == clientID {
+						lobby.HandleLeaveLobby(clientID)
+						if len(lobby.Players) == 0 {
+							delete(game.Lobbies, lobby.GameCode)
+						}
+						leftLobby = true
+						break
+					}
+				}
+				if leftLobby {
+					break
+				}
+			}
+		}
+		connectionsMu.Unlock()
+		conn.Close()
+		game.PrintAllLobbyInfo()
+	}()
 
-	socket.OnEvent("/", "joinGame", func(s socketio.Conn, gameCode, playerID string) {
-		// gameLock.Lock()
-		//defer gameLock.Unlock()
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Read msg error", err)
+			break
+		}
 
-		// game, exists := games[gameCode]
-		// if !exists || len(game.Players) < 4 {
-		// 	s.Emit("error", "Cannot join: Game does not exist or is incomplete.")
-		// 	return
-		// }
+		var msg SocketMessage
+		err = json.Unmarshal(message, &msg)
+		if err != nil {
+			log.Println("Error unmarshaling message:", err)
+			continue
+		}
 
-		// s.Join(gameCode)
-		// log.Printf("Player %s joined room %s\n", playerID, gameCode)
-		// s.Emit("startGame", game)
-	})
+		handleSocketMessage(conn, msg, clientID)
+	}
+}
 
-	// Handle player moves
-	socket.OnEvent("/game", "playerMove", func(s socketio.Conn, gameCode, playerID, move string) {
-		// gameLock.Lock()
-		// defer gameLock.Unlock()
-
-		// game, exists := games[gameCode]
-		// if !exists || game.State != "active" {
-		// 	s.Emit("error", "Game is not active")
-		// 	return
-		// }
-
-		// if game.TurnOrder[game.CurrentTurn] != playerID {
-		// 	s.Emit("error", "Not your turn")
-		// 	return
-		// }
-
-		// // Process move (for simplicity, just log it)
-		// log.Printf("Player %s made move: %s\n", playerID, move)
-
-		// // Update turn
-		// game.CurrentTurn = (game.CurrentTurn + 1) % len(game.TurnOrder)
-		// nextPlayerID := game.TurnOrder[game.CurrentTurn]
-
-		// // Broadcast updated game state
-		// socket.BroadcastToRoom("/", gameCode, "moveUpdate", map[string]interface{}{
-		// 	"playerID": playerID,
-		// 	"move":     move,
-		// 	"nextTurn": nextPlayerID,
-		// })
-	})
-
-	socket.OnError("/", func(s socketio.Conn, e error) {
-		log.Println("Socket.IO error:", e)
-	})
-
-	socket.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		log.Println("Disconnected:", reason)
-	})
-
-	return socket, nil
+func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID string) {
+	switch msg.Type {
+	case "join":
+		payload, payloadOk := msg.Payload.(map[string]interface{})
+		playerName, nameOk := payload["playerName"].(string)
+		lobbyCode, codeOk := payload["lobbyCode"].(string)
+		if !payloadOk || !nameOk || !codeOk {
+			log.Println("join payload is incorrectly formatted")
+			return
+		}
+		log.Println("player name", playerName, "lobby code", lobbyCode)
+		lobby, err := game.GetOrCreateLobby(lobbyCode)
+		if err != nil {
+			log.Println("error getting / creating lobby", err)
+			return
+		}
+		lobby.HandleJoinLobby(conn, playerName, lobbyCode, clientID)
+	case "leave":
+		log.Println("got the leave message")
+		payload, payloadOk := msg.Payload.(map[string]interface{})
+		_, nameOk := payload["playerName"].(string)
+		lobbyCode, codeOk := payload["lobbyCode"].(string)
+		if !payloadOk || !nameOk || !codeOk {
+			log.Println("join payload is incorrectly formatted")
+			return
+		}
+		lobby := game.GetLobby(lobbyCode)
+		lobby.HandleLeaveLobby(clientID)
+	default:
+		log.Println("unknown msg type:", msg.Type, msg.Payload)
+	}
 }
