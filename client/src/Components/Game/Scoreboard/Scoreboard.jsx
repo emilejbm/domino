@@ -2,8 +2,8 @@ import styled from "styled-components";
 import Avatar from "../../Shared/Avatar/Avatar";
 import { Grid2, Typography } from "@mui/material";
 import Button from "../../Shared/Button/Button";
-import { Link } from "react-router-dom";
-import { useSelector } from "../../../utils/hooks";
+// import { Link } from "react-router-dom";
+// import { useSelector } from "../../../utils/hooks";
 
 const Root = styled.div`
   position: fixed;
@@ -51,15 +51,15 @@ export default function Scoreboard({ players }) {
       <Typography variant="h2" textAlign="center" fontWeight={600} mb={6}>
         Game Finished!!
       </Typography>
-      {/* {players.map((p, idx) => (
-        <div className={`row ${p.id === playerId && "me"}`} key={idx}>
+      {players.map((p, idx) => (
+        <div className={`row "me"}`} key={idx}>
           <div className="order">{idx + 1}</div>
           <div className="img">
             <Avatar seed={`${p.name}${p.img}`} />{" "}
           </div>
           <div className="name">{p.name}</div>
         </div>
-      ))} */}
+      ))}
 
       <Grid2 container justifyContent="center" mt={6}>
         <Link to="/main-menu">

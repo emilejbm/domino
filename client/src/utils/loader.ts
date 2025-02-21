@@ -68,8 +68,8 @@ class Loader extends EventsObject {
 
   onProgress() {
     this.loadedCnt++;
-    this.fireEvent("progress", this.loadedCnt / this.totalCnt);
-    if (this.loadedCnt === this.totalCnt) this.fireEvent("completed");
+    // this.fireEvent("progress", this.loadedCnt / this.totalCnt);
+    // if (this.loadedCnt === this.totalCnt) this.fireEvent("completed");
   }
 }
 

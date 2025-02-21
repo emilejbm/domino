@@ -7,15 +7,11 @@ export const SocketProvider = ({ children }) => {
     const socketRef = useRef(null);
     const [socket, setSocket] = useState(null);
     const [context, setContext] = useState("lobby");
-    const [clientId, setClientID] = useState(localStorage.getItem("clientId"));
-    if (!clientId) {
-        setClientID(uuidv4());
-        localStorage.setItem("clientId", clientId);
-    }
+    const [clientId, setClientID] = useState(null);
 
     useEffect(() => {
-        const connectWebSocket = () => {
-            const newSocket = new WebSocket(`ws://localhost:8080/ws?clientId=${clientId}`);
+        const connectWebSocket = (currClientID) => {
+            const newSocket = new WebSocket(`ws://localhost:8080/ws?clientId=${currClientID}`);
             socketRef.current = newSocket;
             setSocket(newSocket);
 
@@ -33,7 +29,16 @@ export const SocketProvider = ({ children }) => {
             };
         };
 
-        connectWebSocket();
+        const storedClientId = localStorage.getItem("clientId");
+        if (storedClientId) {
+            setClientID(storedClientId);
+            connectWebSocket(storedClientId);
+        } else {
+            const newClientId = uuidv4();
+            localStorage.setItem("clientId", newClientId);
+            setClientID(newClientId);
+            connectWebSocket(newClientId);
+        }
 
         return () => {
             if (socketRef.current) {

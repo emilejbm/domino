@@ -7,8 +7,6 @@ import Typography from "../Shared/Typography/Typography";
 import { useState } from "react";
 import { Link, useNavigate, useParams} from "react-router-dom";
 // import API from "../../api/API";
-import { useDispatch } from "../../utils/hooks.ts";
-import { setInLobby, setPlayerId } from "../../stores/redux/gameSlice";
 
 const style = {
   color: "#fff",
@@ -18,7 +16,6 @@ const serverUrl = "http://localhost:8080"
 
 const MainMenu = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const params = useParams()
 
   const [playerName, _] = useState(localStorage.getItem("playerName"));

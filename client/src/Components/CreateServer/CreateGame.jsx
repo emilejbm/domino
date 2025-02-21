@@ -6,22 +6,16 @@ import Button from "../Shared/Button/Button";
 import TextField from "../Shared/TextField/TextField";
 import Switch from "../Shared/Switch/Switch";
 import { useNavigate } from "react-router-dom";
-// import API from "../../api/API.ts";
 
 import Typography from "../Shared/Typography/Typography";
-import { useDispatch } from "../../utils/hooks";
-//import { createGame } from "../../stores/redux/gameSlice";
-
-
 
 const CreateGame = () => {
   const [serverName, setServerName] = React.useState("");
   const [serverPassword, setServerPassword] = React.useState("");
   const [isPrivate, setIsPrivate] = React.useState(false);
   const navigate = useNavigate();
-  //const dispatch = useDispatch();
-
   const handleCreateGame = async () => {
+    // 
   };
 
   return (

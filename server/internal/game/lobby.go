@@ -80,6 +80,8 @@ func (l *Lobby) HandleJoinLobby(conn *websocket.Conn, playerName string, lobbyCo
 	// check if player name already exists
 	for _, p := range l.Players {
 		if p.Name == playerName {
+			// maybe not error in case player was just rejoining?
+			l.BroadcastUpdatedLobby()
 			return errors.New("player already in game")
 		}
 	}
@@ -87,7 +89,7 @@ func (l *Lobby) HandleJoinLobby(conn *websocket.Conn, playerName string, lobbyCo
 	player := &Player{Name: playerName, IsBot: false, Connection: conn, ID: clientID}
 	l.Players = append(l.Players, player)
 
-	l.BroadcastPlayersToLobby()
+	l.BroadcastUpdatedLobby()
 	return nil
 }
 
@@ -100,11 +102,11 @@ func (l *Lobby) LeaveLobby(clientID string) {
 		}
 	}
 
-	l.BroadcastPlayersToLobby()
+	l.BroadcastUpdatedLobby()
 }
 
 // broadcast player names in lobby
-func (l *Lobby) BroadcastPlayersToLobby() {
+func (l *Lobby) BroadcastUpdatedLobby() {
 	playerNames := make([]string, len(l.Players))
 	for i, p := range l.Players {
 		playerNames[i] = p.Name

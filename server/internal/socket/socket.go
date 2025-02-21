@@ -129,7 +129,7 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 			log.Println("join-lobby payload is incorrectly formatted")
 			break
 		}
-		log.Println("player name", playerName, "lobby code", lobbyCode)
+		log.Println("player name", playerName, clientID, "lobby code", lobbyCode)
 		lobby, err := game.GetOrCreateLobby(lobbyCode)
 		if err != nil {
 			log.Println("error getting / creating lobby", err)
@@ -146,8 +146,10 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 		}
 		lobby := game.GetLobby(lobbyCode)
 		lobby.LeaveLobby(clientID)
+		lobby.BroadcastUpdatedLobby()
 
 	case "join-game":
+		// not handling joining when user goes directly to the game page. right now assumes he was in lobby before
 		payload, payloadOk := msg.Payload.(map[string]interface{})
 		gameCode, codeOk := payload["gameCode"].(string)
 		if !payloadOk || !codeOk {
@@ -169,14 +171,15 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 				log.Println("something happened creating game")
 				break
 			}
-			newGame.BroadcastGameState()
+			log.Println("game did not exist before")
+			newGame.BroadcastGameInfo()
 		} else {
 			log.Println("game already exists")
-			g.BroadcastGameState()
+			g.BroadcastGameInfo()
 		}
 
 	case "start-game":
-		// init game (shuffle, send dominoes, alert starting player to make first move)
+		// should do this by clientID (find game client id is in and start it)
 		payload, payloadOk := msg.Payload.(map[string]interface{})
 		gameCode, codeOk := payload["gameCode"].(string)
 		if !payloadOk || !codeOk {
@@ -191,6 +194,26 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 		}
 
 		currGame.InitGame()
+		go currGame.GameLoop()
+
+	case "game-action":
+		payload, payloadOk := msg.Payload.(map[string]interface{})
+		if !payloadOk {
+			log.Println("game-action payload is incorrectly formatted")
+			break
+		}
+		g := game.GetPlayersGame(clientID)
+		domino, dominoExists := payload["domino"].(map[int]int)
+		if !dominoExists {
+			log.Println("domino incorrectly formatted")
+		}
+		var currPlayer *game.Player
+		for _, p := range g.Players {
+			if p.ID == clientID {
+				currPlayer = p
+			}
+		}
+		g.MakeMove(currPlayer, &game.Domino{SideA: domino[0], SideB: domino[1]})
 
 	case "leave-game": // entirely handled by defer of HandleWebSocket?
 		// payload, payloadOk := msg.Payload.(map[string]interface{})
@@ -202,19 +225,6 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 		// }
 		// g := game.GetGame(gameCode)
 		// g.LeaveGame(clientID)
-
-	case "game-action":
-		// check if valid move
-
-		// if not broadcast to that player invalid move
-
-		// else broadcast to everyone the move he just made
-
-		// update the gameboard
-
-		// check if game end
-		// broadcast game end
-
 	default:
 		log.Println("unknown msg type:", msg.Type, msg.Payload)
 	}

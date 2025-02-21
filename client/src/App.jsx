@@ -2,15 +2,13 @@ import GameAudio from "./utils/audio";
 
 import styled from "styled-components";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { store } from "./stores/store.ts"
 import { useState } from "react";
-import { Provider } from "react-redux"
 
-import StartPage from "./Components/StartPage/StartPage";
-import Lobby from "./Components/WaitingLobby/Lobby";
-import CreateUser from "./Components/CreateUser/CreateUser";
-import Loading from "./Components/Shared/Loading/Loading";
-import MainMenu from "./Components/MainMenu/MainMenu";
+import StartPage from "./Components/StartPage/StartPage.jsx";
+import Lobby from "./Components/WaitingLobby/Lobby.jsx";
+import CreateUser from "./Components/CreateUser/CreateUser.jsx";
+import Loading from "./Components/Shared/Loading/Loading.jsx";
+import MainMenu from "./Components/MainMenu/MainMenu.jsx";
 import CreateServer from "./Components/CreateServer/CreateGame.jsx";
 import Game from "./Components/Game/Game"
 
@@ -27,8 +25,6 @@ const RootDiv = styled.div`
 function App() {
   const [loadingAssets, setLoadingAssets] = useState(false);
 
-  // const location = useLocation();
-
   const onLoaded = () => {
     GameAudio.playMusic("music");
     setLoadingAssets(false);
@@ -38,7 +34,6 @@ function App() {
 
   return (
     <RootDiv>
-      <Provider store={store}>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<StartPage />} />
@@ -48,7 +43,6 @@ function App() {
           <Route path="/game/:gameCode" element={<Game />} />
         </Routes>
       </BrowserRouter>
-      </Provider>
     </RootDiv>
   )
 }

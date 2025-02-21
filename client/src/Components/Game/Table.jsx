@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import Card from "../Shared/Card/Card";
+import Card from "../Shared/Domino/Domino";
 
 const Root = styled.div`
   width: 100vw;

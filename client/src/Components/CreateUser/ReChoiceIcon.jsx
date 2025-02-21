@@ -8,7 +8,7 @@ const ReChoiceIcon = () => {
       focusable="false"
       data-prefix="fas"
       data-icon="arrow-rotate-left"
-      class="svg-inline--fa fa-arrow-rotate-left"
+      className="svg-inline--fa fa-arrow-rotate-left"
       role="img"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 512 512"
