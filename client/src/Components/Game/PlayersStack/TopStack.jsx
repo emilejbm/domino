@@ -15,14 +15,16 @@ const Row = styled.div`
   filter: ${(props) =>
     props.highlight ? "drop-shadow(0 0 10px white)" : "brightness(0.6)"};
 
+  --domoWidth: 4vw;
+  --domoHeight: calc(var(--domoWidth) * (469 / 229));;
   --dominoesLeft: ${(props) => props.dominoesLeft};
   --containerMaxWidth: 50vw;
-  .card-container {
+  .domo-container {
     &:not(:last-of-type) {
       margin-right: calc(
         -1 * max(calc((
-                  var(--cardWidth) * var(--dominoesLeft) - var(--containerMaxWidth)
-                ) / (var(--dominoesLeft)-1)), calc(var(--cardWidth) / 3))
+                  var(--domoWidth) * var(--dominoesLeft) - var(--containerMaxWidth)
+                ) / (var(--dominoesLeft)-1)), calc(var(--domoWidth) / 3))
       );
     }
   }
@@ -33,11 +35,11 @@ export default function TopStack({ dominoesLeft, highlight} ) {
 
   for (let i = 0; i < dominoesLeft; i++) {
     dominoesToRender.push(
-      <div className="card-container" key={i}>
+      <div className="domo-container" key={i}>
         <Domino
           left={null}
           right={null}
-          width={200} // prob should be dynamic
+          sideView={false}
         />
       </div>
     );

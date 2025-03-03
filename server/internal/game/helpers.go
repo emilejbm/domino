@@ -214,6 +214,7 @@ func generateGameCode() (string, error) {
 
 // ------- bot stuff ------- //
 func (g *Game) BotMakeMove(bot *Player) {
+	time.Sleep(2 * time.Second)
 	var validDomino *Domino = nil
 	for _, domino := range bot.Hand {
 		tempDomino := &Domino{SideA: domino.SideA, SideB: domino.SideB}

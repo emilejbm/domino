@@ -57,7 +57,7 @@ export default function StartPage() {
         }}
         className="img"
       >
-        <img src="assets/images/doblesei.png" alt="UNO Logo" />
+        <img src="/images/doblesei.png" alt="logo" />
       </motion.div>
       <Typography
         variant="h4"
@@ -96,7 +96,7 @@ export default function StartPage() {
           setMounted(true)}
         }
       >
-        Juega domino cb
+        Juega domino
       </Typography>
     </Root>
   );

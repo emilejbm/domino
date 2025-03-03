@@ -6,7 +6,6 @@ const PlayerStackStyle = styled.div`
   bottom: -50px;
   left: 50%;
   transform: translateX(-50%);
-  --cardWidth: var(--cardWidthBigger);
 `;
 
 const Row = styled.div`
@@ -14,16 +13,18 @@ const Row = styled.div`
   justify-content: center;
 
   filter: ${(props) =>
-    props.highlight ? "drop-shadow(0 0 10px white)" : "brightness(0.6)"};
+    props.highlight ? "drop-shadow(0 0 10px white)" : "brightness(0.9)"};
 
+  --domoWidth: 5vw;
+  --domoHeight: calc(var(--domoWidth) * (470 / 230));
   --dominoesLength: ${(props) => props.dominoesLength};
   --containerMaxWidth: 50vw;
-  .card-container {
+  .domo-container {
     &:not(:last-of-type) {
       margin-right: calc(
         -1 * max(calc((
-                  var(--cardWidth) * var(--dominoesLength) - var(--containerMaxWidth)
-                ) / (var(--dominoesLength)-1)), calc(var(--cardWidth) / 3))
+                  var(--domoWidth) * var(--dominoesLength) - var(--containerMaxWidth)
+                ) / (var(--dominoesLength)-1)), calc(var(--domoWidth) / 3))
       );
     }
   }
@@ -38,11 +39,12 @@ export default function PlayerStack({ dominoes, highlight }) {
       
       <Row layout dominoesLength={dominoes.length} highlight={highlight}>
       {dominoes.map((domino) => (
-        <div className="card-container">
+        <div className="domo-container">
           <Domino
+            isPlayerStack={true}
             left={domino.SideA}
             right={domino.SideB}
-            width={200}
+            sideView={false}
             selectable={true}
           />
         </div>

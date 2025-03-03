@@ -6,9 +6,14 @@ import { motion } from "framer-motion";
 const Root = styled.div`
   --color: var(--${(props) => props.color});
 
+  transform: ${(props) => (props.sideView ? "perspective(800px) rotateY(80deg)" : "none")};
+  transform: ${(props) => (props.onGameBoard ? `rotate(90deg) translateY(calc(var(--domoWidth) / -4))` : "none")};
+  width: var(--domoWidth);
+  height: var(--domoHeight);
+
   /* overflow: hidden; */
-  padding-top: 141%;
-  border-radius: calc(var(--cardWidth) / 10);
+  padding-top: 0%;
+  border-radius: calc(var(--domoWidth) / 10);
 
   box-shadow: ${(props) =>
     !props.disableShadow ? "0 0 10px #292727" : "none"};
@@ -16,12 +21,10 @@ const Root = styled.div`
   transform-style: preserve-3d;
 
   cursor: ${(props) => (props.playable ? "pointer" : "inherit")};
-  filter: ${(props) =>
-    props.selectable && !props.playable ? "contrast(.5)" : "none"};
 
   .front,
   .back {
-    border-radius: calc(var(--cardWidth) / 10);
+    border-radius: calc(var(--domoWidth) / 6);
     background: whitesmoke;
     position: absolute;
     top: 0;
@@ -30,112 +33,26 @@ const Root = styled.div`
     height: 100%;
     overflow: hidden;
     backface-visibility: hidden;
+    object-fit: cover;
   }
 
   .front {
-    transform: translateZ(1px);
+    transform: rotateY(0deg) translateZ(1px);
+    z-index: 2;
     font-family: sans-serif;
-
-    .value {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: var(--color);
-      font-size: var(--fontBig);
-      font-family: sans-serif !important;
-      font-weight: bold;
-      text-shadow: 5px 5px black;
-      -webkit-text-stroke: black 2px;
-    }
-
-    .card-icon {
-      width: 80%;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    .value-small {
-      position: absolute;
-      color: white;
-      -webkit-text-stroke: black 1.5px;
-      font-weight: bold;
-      font-size: var(--fontSmall);
-      font-style: italic;
-      font-family: sans-serif !important;
-
-      &.value-tl {
-        top: 14px;
-        left: 22px;
-      }
-
-      &.value-br {
-        bottom: 14px;
-        right: 22px;
-        transform: scale(-1);
-      }
-
-      @media screen and (max-width: 1000px) {
-        -webkit-text-stroke: black 1px;
-
-        .value {
-          text-shadow: 3px 3px black;
-        }
-
-        &.value-tl {
-          top: 9px;
-          left: 13px;
-        }
-
-        &.value-br {
-          bottom: 9px;
-          right: 13px;
-          transform: scale(-1);
-        }
-      }
-    }
-
-    .icon-small {
-      position: absolute;
-      width: 20%;
-      &.icon-tl {
-        top: 25px;
-        left: 20px;
-      }
-
-      &.icon-br {
-        bottom: 25px;
-        right: 20px;
-        transform: scale(-1);
-      }
-      @media screen and (max-width: 1000px) {
-        &.icon-tl {
-          top: 14px;
-          left: 11px;
-        }
-
-        &.icon-br {
-          bottom: 14px;
-          right: 11px;
-          transform: scale(-1);
-        }
-      }
-    }
   }
 
   .back {
-    transform: rotateY(180deg);
+    transform: rotateY(180deg) translateZ(1px);
   }
 `;
 
 export default function Domino({
-  id = "",
+  onGameBoard = false,
+  isPlayerStack = false,
   left = "",
   right = "",
-  disableShadow = true,
-  playable,
+  sideView = false,
 }) {
 
   const dominoNumToString = (num) => {
@@ -148,21 +65,28 @@ export default function Domino({
     if (num === 6) return "seis";
   }
 
-  const getFrontContent = () => {
-    if (left === null || right === null) {
-      return (<></>)
-    }
+  const getBackContent = () => {
     return (
-      <>
-        <Image src={`/images/${dominoNumToString(left)}-${dominoNumToString(right)}.png`} ratio={590 / 418} />
-      </>
-    );
-  };
+      <Image src={`/images/backside3.png`} ratio={229 / 469} />
+    )
+  }
+
+  const getFrontContent = () => {
+    const backUpImgSrc = `/images/${dominoNumToString(right)}-${dominoNumToString(left)}.png`
+    if (isPlayerStack && left && right) {
+      // check if left-right.png exists, if not right-left.png probably does
+      return (
+        <Image src={`/images/${dominoNumToString(left)}-${dominoNumToString(right)}.png`} ratio={469 / 229} backUpImgSrc={backUpImgSrc}/>
+      );
+    }
+  }
 
   return (
     <Root
       as={motion.div}
-      color="black"
+      sideView={sideView}
+      disableShadow={false}
+      color="white"
       className="noselect"
       initial={{
         rotateY: true ? Math.abs(180 - 180) : 180,
@@ -173,17 +97,14 @@ export default function Domino({
           ? { y: -40, transition: { duration: 0.3 } }
           : { y: 0, transition: { duration: 0.3 } }
       }
-      animate={{ rotateY: 180, y: 0 }}
+      animate={{ rotateY: isPlayerStack ? 0 : 180, y: 0 }}
       transition={{ duration: 0.5, ease: "easeInOut" }}
       selectable={true}
       playable={true}
-      disableShadow={false}
-      //onClick={onClick}
+      onGameBoard={onGameBoard}
     >
-      <div className="back">{getFrontContent()}</div>
-      <div className="front"> 
-         <Image src={`assets/images/backside.png`} ratio={590 / 418} />
-      </div>
+      <div className="front">{getFrontContent()}</div>
+      <div className="back">{getBackContent()}</div>
     </Root>
   );
 }

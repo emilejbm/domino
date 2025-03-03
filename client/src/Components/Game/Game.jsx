@@ -7,6 +7,7 @@ import PlayerStack from "./PlayersStack/PlayerStack.jsx";
 import LeftStack from "./PlayersStack/LeftStack.jsx";
 import RightStack from "./PlayersStack/RightStack.jsx";
 import TopStack from "./PlayersStack/TopStack.jsx";
+import GameBoard from "./GameBoard.jsx"
 import Scoreboard from "./Scoreboard/Scoreboard.jsx"
 import { useState, useEffect } from "react"
 import { useParams, useLocation } from "react-router-dom";
@@ -17,6 +18,7 @@ export default function Game() {
 
   const { gameCode } = useParams()
   const { socket, sendMessage, setContext } = useSocket();
+  const [firstDomino, setFirstDomino] = useState(null);
   const [dominoes, setDominoes] = useState([]); // type {SideA: int, SideB: int}
   const [players, setPlayers] = useState([]);
   const [playerName, _] = useState(localStorage.getItem("playerName"))
@@ -26,6 +28,7 @@ export default function Game() {
   const [playerThatJustPassed, setPlayerThatJustPassed] = useState(null)
   const [dominoesLeft, setDominoesLeft] = useState([7,7,7,7]) // respective to players' turn (idx)
   const [gameBoard, setGameBoard] = useState(null) // []Dominoes type {SideA: int, SideB: int}
+  const [dominoLocations, setDominoLocations] = useState(null)
   const location = useLocation();
 
   console.log("Game state", gameState)
@@ -65,10 +68,13 @@ export default function Game() {
           break;
         case "updated-game-board":
           console.log("someone played", message.payload)
-          setGameState("in-progress") // chekea si hay tranque
+          setGameState("in-progress")
           setDominoesLeft(message.payload.dominoesLeft)
           setCurrentTurn(message.payload.turn)
           setGameBoard(message.payload.gameBoard)
+          if (firstDomino === null){
+            setFirstDomino(message.payload.gameBoard[0])
+          }
           break;
         case "someone-passed":
           console.log("this player passed", message.payload.playerPassed)
@@ -111,11 +117,13 @@ export default function Game() {
       </Grid>
     }
     {gameState === "in-progress" && 
+    // never my turn? not highlighting
     <div>
         <PlayerStack dominoes={dominoes} highlight={currentTurn === myTurn}/>
         <RightStack dominoesLeft={dominoesLeft[(myTurn + 1)%4]} highlight={currentTurn === ((myTurn + 1)%4)} />
         <TopStack dominoesLeft={dominoesLeft[(myTurn + 2)%4]} highlight={currentTurn === ((myTurn + 2)%4)} />
         <LeftStack dominoesLeft={dominoesLeft[(myTurn + 3)%4]} highlight={currentTurn === ((myTurn + 3)%4)} />
+        <GameBoard gameBoard={gameBoard} firstDomino={firstDomino}/>
     </div>
     }
     {gameState === "finished" && <Scoreboard players={players} />} 

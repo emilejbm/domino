@@ -15,16 +15,17 @@ const Column = styled.div`
   filter: ${(props) =>
     props.highlight ? "drop-shadow(0 0 10px white)" : "brightness(0.6)"};
 
-  --cardHeight: calc(1.41 * var(--cardWidth));
+  --domoWidth: 1.5vw;
+  --domoHeight: calc(var(--domoWidth) * (470 / 230));
   --dominoesLeft: ${(props) => props.dominoesLeft};
   --containerMaxHeight: 50vh;
-  .card-container {
+  .domo-container {
     &:not(:last-of-type) {
       margin-bottom: calc(
         -1 * max(calc((
-                  var(--cardHeight) * var(--dominoesLeft) -
+                  var(--domoHeight) * var(--dominoesLeft) -
                     var(--containerMaxHeight)
-                ) / (var(--dominoesLeft)-1)), calc(var(--cardHeight) / 2))
+                ) / (var(--dominoesLeft)-1)), calc(var(--domoHeight) / 2))
       );
     }
   }
@@ -35,11 +36,11 @@ export default function RightStack({dominoesLeft, highlight}) {
 
   for (let i = 0; i < dominoesLeft; i++) {
     dominoesToRender.push(
-      <div className="card-container" key={i}>
+      <div className="domo-container" key={i}>
         <Domino
           left={null}
           right={null}
-          width={200} // prob should be dynamic
+          sideView={true}
         />
       </div>
     );
@@ -47,7 +48,7 @@ export default function RightStack({dominoesLeft, highlight}) {
 
   return (
     <RightStackStyle>
-      <Column layout dominoesLeft={dominoesLeft} highlight={highlight}>
+      <Column side-view layout dominoesLeft={dominoesLeft} highlight={highlight}>
         {dominoesToRender}
       </Column>
     </RightStackStyle>
