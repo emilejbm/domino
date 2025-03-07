@@ -203,17 +203,35 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 			break
 		}
 		g := game.GetPlayersGame(clientID)
-		domino, dominoExists := payload["domino"].(map[int]int)
-		if !dominoExists {
-			log.Println("domino incorrectly formatted")
-		}
 		var currPlayer *game.Player
-		for _, p := range g.Players {
+		var playersTurn bool
+		for i, p := range g.Players {
 			if p.ID == clientID {
+				if i != g.CurrentTurn {
+					playersTurn = false
+				} else {
+					playersTurn = true
+				}
 				currPlayer = p
+				break
 			}
 		}
-		g.MakeMove(currPlayer, &game.Domino{SideA: domino[0], SideB: domino[1]})
+
+		if !playersTurn {
+			log.Println("skipping game action bc not players turn")
+			break
+		}
+
+		domino, dominoExists := payload["domino"].(map[string]interface{})
+		side, sideExists := payload["side"].(string)
+		if !dominoExists || !sideExists {
+			log.Println("domino incorrectly formatted", payload)
+		}
+
+		sideA := int(domino["SideA"].(float64))
+		sideB := int(domino["SideB"].(float64))
+		log.Println("trying to play on this side", side, sideA, sideB)
+		g.MakeMove(currPlayer, &game.Domino{SideA: sideA, SideB: sideB}, side)
 
 	case "leave-game": // entirely handled by defer of HandleWebSocket?
 		// payload, payloadOk := msg.Payload.(map[string]interface{})
@@ -225,6 +243,9 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 		// }
 		// g := game.GetGame(gameCode)
 		// g.LeaveGame(clientID)
+	// case "make-move":
+	// 	payload, payloadOk := msg.Payload.(map[string]interface{})
+
 	default:
 		log.Println("unknown msg type:", msg.Type, msg.Payload)
 	}

@@ -28,7 +28,7 @@ export default function Game() {
   const [playerThatJustPassed, setPlayerThatJustPassed] = useState(null)
   const [dominoesLeft, setDominoesLeft] = useState([7,7,7,7]) // respective to players' turn (idx)
   const [gameBoard, setGameBoard] = useState(null) // []Dominoes type {SideA: int, SideB: int}
-  const [dominoLocations, setDominoLocations] = useState(null)
+  const [dominoCoords, setDominoCoords] = useState({});
   const location = useLocation();
 
   console.log("Game state", gameState)
@@ -45,15 +45,9 @@ export default function Game() {
     sendStartGameMessage()
   }
 
-  const makeMove = (domino) => {
-    //sendMessage({type: "make-move", payload: { domino } })
+  const makeMove = (domino, side) => {
+    sendMessage({type: "game-action", payload: { domino, side }, })
   }
-
-  const handleDragEnd = async (event, info) => {
-    // not sure how to find domino
-    //const domino = gameState.playerHands[gameState.currentPlayer].find(d => d.id === selectedDomino);
-    //makeMove(domino)
-  };
 
   useEffect(() => {
     let socketInstance = socket;
@@ -62,25 +56,30 @@ export default function Game() {
       const message = JSON.parse(event.data);
       switch (message.type){    
         case "game-info":
-          console.log("payload for game-info", message.payload)
           setPlayers(message.payload.playerNames);
           setDominoes(message.payload.hand)
           break;
+
         case "updated-game-board":
-          console.log("someone played", message.payload)
           setGameState("in-progress")
           setDominoesLeft(message.payload.dominoesLeft)
           setCurrentTurn(message.payload.turn)
           setGameBoard(message.payload.gameBoard)
+          setDominoes(message.payload.hand)
           if (firstDomino === null){
             setFirstDomino(message.payload.gameBoard[0])
           }
           break;
+
+        case "game-ended":
+          console.log("game-ended received");
+          break;
+
         case "someone-passed":
           console.log("this player passed", message.payload.playerPassed)
           setPlayerThatJustPassed(message.payload)
           break;
-        
+
         default:
           break;
       }
@@ -119,11 +118,11 @@ export default function Game() {
     {gameState === "in-progress" && 
     // never my turn? not highlighting
     <div>
-        <PlayerStack dominoes={dominoes} highlight={currentTurn === myTurn}/>
+        <PlayerStack dominoes={dominoes} isMyTurn={currentTurn === myTurn} dominoCoords={dominoCoords} makeMove={makeMove} gameBoard={gameBoard}/>
         <RightStack dominoesLeft={dominoesLeft[(myTurn + 1)%4]} highlight={currentTurn === ((myTurn + 1)%4)} />
         <TopStack dominoesLeft={dominoesLeft[(myTurn + 2)%4]} highlight={currentTurn === ((myTurn + 2)%4)} />
         <LeftStack dominoesLeft={dominoesLeft[(myTurn + 3)%4]} highlight={currentTurn === ((myTurn + 3)%4)} />
-        <GameBoard gameBoard={gameBoard} firstDomino={firstDomino}/>
+        <GameBoard gameBoard={gameBoard} firstDomino={firstDomino} dominoCoords={dominoCoords} setDominoCoords={setDominoCoords}/>
     </div>
     }
     {gameState === "finished" && <Scoreboard players={players} />} 

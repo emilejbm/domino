@@ -10,14 +10,13 @@ import (
 
 // ////////////////////////////////// structs ////////////////////////////////////
 type Game struct {
-	GameCode      string // Unique game code
-	GameBoard     *GameBoard
-	Players       []*Player
-	TurnOrder     []string // Order of players' turns
-	CurrentTurn   int      // Index of the current player
-	State         string   // Game state: "lobby", "waiting", "active", or "completed"
-	mu            sync.Mutex
-	connectionsMu sync.Mutex
+	GameCode    string // Unique game code
+	GameBoard   *GameBoard
+	Players     []*Player
+	TurnOrder   []string // Order of players' turns
+	CurrentTurn int      // Index of the current player
+	State       string   // Game state: "lobby", "waiting", "active", or "completed"
+	mu          sync.Mutex
 }
 
 type Domino struct {
@@ -62,6 +61,7 @@ type UpdatedGameBoard struct {
 	GameBoard          []*Domino `json:"gameBoard"`
 	TurnToDominoesLeft []int     `json:"dominoesLeft"`
 	CurrentTurn        int       `json:"currentTurn"`
+	MyHand             []Domino  `json:"hand"`
 }
 
 // ////////////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ func (g *Game) GameLoop() {
 	}
 }
 
-func (g *Game) MakeMove(player *Player, domino *Domino) {
+func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide ...string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if !g.IsValidMove(domino, player) {
@@ -147,6 +147,7 @@ func (g *Game) MakeMove(player *Player, domino *Domino) {
 		}
 	}
 
+	g.CurrentTurn = (g.CurrentTurn + 1) % len(g.Players)
 	g.BroadcastUpdatedGameBoard()
 	if g.IsGameEnd() {
 		g.BroadcastGameEnd()
@@ -250,46 +251,47 @@ func (g *Game) BroadcastUpdatedGameBoard() {
 
 	dominoArray := g.GameBoard.toDominoArray()
 	dominoesLeft := make([]int, len(g.Players))
-
 	for i, player := range g.Players {
+
 		dominoesLeft[i] = len(player.Hand)
 	}
 
-	message := GameMessage{Type: "updated-game-board", Payload: UpdatedGameBoard{
-		GameBoard:          dominoArray,
-		TurnToDominoesLeft: dominoesLeft,
-		CurrentTurn:        g.CurrentTurn,
-	}}
-
-	jsonMessage, err := json.Marshal(message)
-	if err != nil {
-		log.Println("Error marshaling game board:", err)
-		return
-	}
-
 	for _, player := range g.Players {
+		message := GameMessage{Type: "updated-game-board", Payload: UpdatedGameBoard{
+			GameBoard:          dominoArray,
+			TurnToDominoesLeft: dominoesLeft,
+			CurrentTurn:        g.CurrentTurn,
+			MyHand:             player.Hand,
+		}}
+
+		jsonMessage, err := json.Marshal(message)
+		if err != nil {
+			log.Println("error marshaling game board:", err)
+			return
+		}
+
 		if player.Connection != nil {
 			if err := player.Connection.WriteMessage(websocket.TextMessage, jsonMessage); err != nil {
 				log.Println("Error broadcasting game board:", err)
 			}
 		}
 	}
+
 }
 
 func (g *Game) BroadcastInvalidMove(p *Player) {
-	someonePassedMessage := GameMessage{Type: "invalid-move", Payload: "no"}
-	jsonMessage, err := json.Marshal(someonePassedMessage)
+	invalidMoveMessage := GameMessage{Type: "invalid-move", Payload: "no"}
+	jsonMessage, err := json.Marshal(invalidMoveMessage)
 	if err != nil {
 		log.Println("error marshaling invalid-move message")
 		return
 	}
-	for _, player := range g.Players {
-		if player.Connection != nil {
-			if err := player.Connection.WriteMessage(websocket.TextMessage, jsonMessage); err != nil {
-				log.Println("Error broadcasting invalid-move:", err)
-			}
+	if p.Connection != nil {
+		if err := p.Connection.WriteMessage(websocket.TextMessage, jsonMessage); err != nil {
+			log.Println("Error broadcasting invalid-move:", err)
 		}
 	}
+
 }
 
 func (g *Game) BroadcastGameEnd() {
@@ -307,20 +309,3 @@ func (g *Game) BroadcastGameEnd() {
 		}
 	}
 }
-
-// only broadcasting to one person
-// func (g *Game) BroadcastYourTurn() {
-// 	for i, player := range g.Players {
-// 		if i == g.CurrentTurn {
-// 			yourTurnMessage := GameMessage{Type: "alert-turn", Payload: nil}
-// 			jsonMessage, err := json.Marshal(yourTurnMessage)
-// 			if err != nil {
-// 				log.Println("error marshaling alert-turn message")
-// 				return
-// 			}
-// 			if err := player.Connection.WriteMessage(websocket.TextMessage, jsonMessage); err != nil {
-// 				log.Println("Error broadcasting turn:", err)
-// 			}
-// 		}
-// 	}
-// }

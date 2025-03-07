@@ -1,7 +1,7 @@
 import styled from "styled-components";
+import { useMemo } from "react";
 import Domino from "../Shared/Domino/Domino";
 import { motion } from "framer-motion";
-import { useRef } from "react";
 
 const DOMINO_WIDTH = 3; // really more like length but css
 const DOMINO_HEIGHT = DOMINO_WIDTH * (470 / 230) // avg png aspect ratio
@@ -15,7 +15,6 @@ const GameBoardDiv = styled.div`
   height: 80vh;
   top: 50%;
   left: 50%;
-  background: green;
   transform: translate(-50%, -50%);
   justify-content: center;
   display: flex;
@@ -37,45 +36,42 @@ const DominoWrapper = styled.div`
 
 // x refers to left, y to top
 // new leftmost domino means left of the first domino in an array where the first domino is always in the middle
-const calcPositionForNewLeftmostDomino = (currIdx, coords, gameBoardRef) => {
+const calcPositionForNewLeftmostDomino = (currIdx, coords) => {
     console.log("calculating left", currIdx, coords);
     const lastDominoOnLeftLocation = coords[`domino-${currIdx+1}`];
-    // const gameBoardContainer = gameBoardRef.current.getBoundingClientRect();
 
     const leftEdge = window.innerWidth * 0.05;
     const bottomEdge = window.innerHeight * 0.9;
 
-    let newX = lastDominoOnLeftLocation.left;
-    let newY = lastDominoOnLeftLocation.top;
+    let x = lastDominoOnLeftLocation.left;
+    let y = lastDominoOnLeftLocation.top;
 
     // dominos will first go left, then down, then right. 
 
     // go left
-    if (gameBoardContainer.left - DOMINO_WIDTH > leftEdge) {
-        newX = lastDominoOnLeftLocation.left - (DOMINO_WIDTH);
-        newY = lastDominoOnLeftLocation.top;
+    if (lastDominoOnLeftLocation.left - DOMINO_WIDTH > leftEdge) {
+        x = lastDominoOnLeftLocation.left - (DOMINO_WIDTH);
+        y = lastDominoOnLeftLocation.top;
     }
 
     // if it reaches bottom edge, its bc we already went left, then down, so go right (assuming container had space to go down)
     if (lastDominoOnLeftLocation.bottom - DOMINO_WIDTH > bottomEdge ) {
         // change orientation
-        newX = lastDominoOnLeftLocation.right;
-        newY = lastDominoOnLeftLocation.bottom + DOMINO_HEIGHT;
+        x = lastDominoOnLeftLocation.right;
+        y = lastDominoOnLeftLocation.bottom + DOMINO_HEIGHT;
     }
 
     // go down
-    if (gameBoardContainer.left - DOMINO_WIDTH < leftEdge ) {
+    if (lastDominoOnLeftLocation.left - DOMINO_WIDTH < leftEdge ) {
         // change orientation
-        newX = lastDominoOnLeftLocation.left;
-        newY = lastDominoOnLeftLocation.bottom;
+        x = lastDominoOnLeftLocation.left;
+        y = lastDominoOnLeftLocation.bottom;
     }
 
-    return { newX, newY }
+    return { x, y }
 }
 
-const calcPositionForNewRightmostDomino = (currIdx, coords, gameBoardRef) => {
-    console.log("calc for right", currIdx, "wwwwwaaatt", coords);
-    // const gameBoardContainer = gameBoardRef.current.getBoundingClientRect();
+const calcPositionForNewRightmostDomino = (currIdx, coords) => {
     const lastDominoOnRightLocation = coords[`domino-${currIdx-1}`];
 
     const rightEdge = window.innerWidth * 0.95;
@@ -112,7 +108,7 @@ const calcPositionForNewRightmostDomino = (currIdx, coords, gameBoardRef) => {
 }
 
 // not rotating of any kind (doubles or when changing direction)
-const getNewDomoPosition = (isDouble, currIdx, midIndex, gameBoardLength, coords, gameBoardRef) => {
+const getNewDomoPosition = (isDouble, currIdx, midIndex, gameBoardLength, coords) => {
     if (currIdx === midIndex) {
         return { x: 0, y: 0 }
     }
@@ -120,68 +116,81 @@ const getNewDomoPosition = (isDouble, currIdx, midIndex, gameBoardLength, coords
     let newPos = {x: 0, y: 0}
 
     if (currIdx < midIndex) { // move left of middle domo
-        newPos = calcPositionForNewLeftmostDomino(currIdx, coords, gameBoardRef);
+        newPos = calcPositionForNewLeftmostDomino(currIdx, coords);
     } else { // move right of middle domo
-        newPos = calcPositionForNewRightmostDomino(currIdx, coords, gameBoardRef);
+        newPos = calcPositionForNewRightmostDomino(currIdx, coords);
     }
 
     return newPos;
 };
 
-const renderDominoes = (gameBoard, firstDomino, gameBoardRef) => {
-    let dominoesJsx = []
-    let coords = {} // so that i can access supposed to be created dominoes
-    const firstDomoIndex = gameBoard.findIndex((domo) => domo.SideA === firstDomino.SideA && domo.SideB === firstDomino.SideB );
-    let idxOfLastDomoOnLeft = 0; // counter of how many dominoes have been rendered to the left of the middle one
-    let idxOfLastDomoOnRight = 0;
+export default function GameBoard({ gameBoard, firstDomino, dominoCoords, setDominoCoords }) {
 
-    for (let i = 0; i < gameBoard.length; i++) {
-        let domoToRenderIdx;
-        if (i === 0) {
-            domoToRenderIdx = firstDomoIndex;
-        } else if (gameBoard[firstDomoIndex - idxOfLastDomoOnLeft - 1] !== undefined) {
-            // render left
-            idxOfLastDomoOnLeft -= 1;
-            domoToRenderIdx = idxOfLastDomoOnLeft;
-        } else if (gameBoard[firstDomoIndex + idxOfLastDomoOnRight + 1] !== undefined) {
-            // render right
-            idxOfLastDomoOnRight += 1;
-            domoToRenderIdx = firstDomoIndex + idxOfLastDomoOnRight;
+    useMemo(() => {
+        if (!gameBoard || !firstDomino) {
+            setDominoCoords({});
+            return;
         }
 
-        const domino = gameBoard[domoToRenderIdx]
-        console.log("curridx", domoToRenderIdx, "first idx", firstDomoIndex )
-        const { x, y } = getNewDomoPosition(true, domoToRenderIdx, firstDomoIndex, gameBoard.length, coords, gameBoardRef)
-        coords[`domino-${domoToRenderIdx}`] = {left: x, top: y, right: x + DOMINO_WIDTH, bottom: y + DOMINO_HEIGHT}
-        dominoesJsx.push(
-            <DominoWrapper id={`domino-${domoToRenderIdx}`} as={motion.div} isDouble={true} xPos={x} yPos={y}>
-                <Domino isPlayerStack={true} key={domoToRenderIdx} left={domino.SideA} right={domino.SideB} onGameBoard={true}/>
-            </DominoWrapper>
-        )
-    }
-    return dominoesJsx;
-}
+        const newCoords = {};
+        const firstDomoIndex = gameBoard.findIndex(
+            (domo) => domo.SideA === firstDomino.SideA && domo.SideB === firstDomino.SideB
+        );
+        let idxOfLastDomoOnLeft = 0;
+        let idxOfLastDomoOnRight = 0;
 
-export default function GameBoard ({ gameBoard, firstDomino }) {
-    console.log('gameboard', gameBoard, firstDomino)
-    const gameBoardRef = useRef(null);
+        for (let i = 0; i < gameBoard.length; i++) {
+            let domoToRenderIdx;
+            if (i === 0) {
+                domoToRenderIdx = firstDomoIndex;
+            } else if (gameBoard[firstDomoIndex - idxOfLastDomoOnLeft - 1] !== undefined) {
+                idxOfLastDomoOnLeft -= 1;
+                domoToRenderIdx = firstDomoIndex + idxOfLastDomoOnLeft;
+            } else if (gameBoard[firstDomoIndex + idxOfLastDomoOnRight + 1] !== undefined) {
+                idxOfLastDomoOnRight += 1;
+                domoToRenderIdx = firstDomoIndex + idxOfLastDomoOnRight;
+            }
+
+            const { x, y } = getNewDomoPosition(true, domoToRenderIdx, firstDomoIndex, gameBoard.length, newCoords);
+            newCoords[`domino-${domoToRenderIdx}`] = {
+                left: x,
+                top: y,
+                right: x + DOMINO_WIDTH,
+                bottom: y + DOMINO_HEIGHT,
+            };
+        }
+        setDominoCoords(newCoords);
+    }, [gameBoard, firstDomino, setDominoCoords]);
+
+    const dominoesJsx = useMemo(() => {
+        if (!gameBoard) return null;
+        if (!gameBoard || Object.keys(dominoCoords).length === 0) return null;
+
+        return gameBoard.map((domino, index) => {
+            const { left, top } = dominoCoords[`domino-${index}`];
+            return (
+                <DominoWrapper
+                    key={index}
+                    id={`domino-${index}`}
+                    as={motion.div}
+                    isDouble={true}
+                    xPos={left}
+                    yPos={top}
+                >
+                    <Domino
+                        isPlayerStack={true}
+                        left={domino.SideA}
+                        right={domino.SideB}
+                        onGameBoard={true}
+                    />
+                </DominoWrapper>
+            );
+        });
+    }, [gameBoard, dominoCoords]);
+
     return (
-      <GameBoardDiv id={"gameBoardDiv"} ref={gameBoardRef} as={motion.div} dominoWidth={DOMINO_WIDTH}>
-        {gameBoard && renderDominoes(gameBoard, firstDomino, gameBoardRef)}
-      </GameBoardDiv>
+        <GameBoardDiv id={"gameBoardDiv"} as={motion.div} dominoWidth={DOMINO_WIDTH}>
+            {dominoesJsx}
+        </GameBoardDiv>
     );
-};
-
-// styling
-// some pictures not rendering (1)
-// test correct steps taken to place dominos (adding width) to directions (1)
-// doubles not being rotated (2)
-// orientation change not being done (when changing direction)
-// backside is ugly, fix proportions for player stack (2)
-// make table less ugly (2)
-
-// gameplay
-// player make move (1)
-// fix infinite bot passes
-// show when game is ended
-// show points + play again
+}

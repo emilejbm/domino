@@ -53,6 +53,7 @@ export default function Domino({
   left = "",
   right = "",
   sideView = false,
+  selectable = false,
 }) {
 
   const dominoNumToString = (num) => {
@@ -67,16 +68,18 @@ export default function Domino({
 
   const getBackContent = () => {
     return (
-      <Image src={`/images/backside3.png`} ratio={229 / 469} />
+      <></>
+      //<Image src={`/images/backside3.png`} ratio={229 / 469} backUpImgSrc={null}/>
     )
   }
 
   const getFrontContent = () => {
     const backUpImgSrc = `/images/${dominoNumToString(right)}-${dominoNumToString(left)}.png`
-    if (isPlayerStack && left && right) {
+
+    if (isPlayerStack && left !== undefined && right !== undefined) {
       // check if left-right.png exists, if not right-left.png probably does
       return (
-        <Image src={`/images/${dominoNumToString(left)}-${dominoNumToString(right)}.png`} ratio={469 / 229} backUpImgSrc={backUpImgSrc}/>
+        <Image src={`/images/${dominoNumToString(left)}-${dominoNumToString(right)}.png`} ratio={470 / 230} backUpImgSrc={backUpImgSrc}/>
       );
     }
   }

@@ -226,7 +226,6 @@ func (g *Game) BotMakeMove(bot *Player) {
 
 	if validDomino != nil {
 		g.MakeMove(bot, validDomino)
-		g.CurrentTurn = (g.CurrentTurn + 1) % len(g.Players)
 		log.Println("bot is making a move ")
 		g.BroadcastUpdatedGameBoard()
 	} else {

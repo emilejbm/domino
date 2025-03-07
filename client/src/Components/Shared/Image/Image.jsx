@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { useState} from "react";
 
 const Root = styled.div`
   position: relative;
@@ -7,6 +8,7 @@ const Root = styled.div`
   height: 100%;
 
   img {
+    pointer-events: none;
     position: absolute;
     width: 100%;
     height: 100%;
@@ -17,14 +19,18 @@ const Root = styled.div`
   }
 `;
 
-export default function Image({ src, alt = " ", ratio = 9 / 16, backUpImgSrc, ...props }) {
-  
+export default function Image({ src, ratio = 470 / 230, backUpImgSrc }) {
+  const [imageError, setImageError] = useState(false);
+  const handleImageError = () => {
+    setImageError(true);
+};
   return (
-    <Root ratio={ratio} {...props}>
-      <img src={src} alt={alt} onerror={(e) => {
-        e.target.onError = null;
-        e.target.src = backUpImgSrc;
-      }}/>
+    <Root ratio={ratio}>
+      { imageError ? (
+        <img src={backUpImgSrc}/> 
+      ) : (
+        <img src={src} onError={handleImageError}/>
+      )}
     </Root>
   );
 }
