@@ -1,48 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Grid2 as Grid,
   Button,
-  TextField,
   Typography,
-  styled,
-  Paper,
-  Avatar,
+  Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { CenteredPaper, StyledAvatar, AlertContainer, StyledTextField } from "../Shared/StyledComponents.jsx"
 
-const CenteredPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
-  maxWidth: 500,
-  position: 'fixed',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  textAlign: 'center',
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  width: '100%',
-  marginBottom: theme.spacing(2),
-}));
-
-const StyledAvatar = styled(Avatar)(({ theme }) => ({
-  width: 100,
-  height: 100,
-  marginBottom: theme.spacing(2),
-}));
+const backend = "http://localhost:8080"
 
 const JoinLobby = () => {
   const [gameCode, setGameCode] = useState('');
   const [playerName, setPlayerName] = useState(localStorage.getItem('playerName') || '')
-  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed') || playerName)
+  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed'))
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertObj, setAlertObj] = useState({severity: 'info', msg: 'Lobby does not exist'});
   const navigate = useNavigate();
 
-  const handleJoinGame = () => {
-    console.log(`Joining game with code: ${gameCode}`);
-    navigate('/waiting-lobby');
+  useEffect(() => {
+    setAvatarSeed(localStorage.getItem('avatarSeed') || playerName);
+  }, [playerName]);
+
+  useEffect(() => {
+    if (showAlert) {
+      const timer = setTimeout(() => setShowAlert(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAlert]);
+
+  const handleJoinGame = async () => {
+    try {
+      const lobbyExistsResponse = await fetch(`${backend}/lobby/${gameCode}`);
+      if (lobbyExistsResponse.ok) {
+        navigate(`/lobby/${gameCode}`)
+      } else {
+        setShowAlert(true);
+        setAlertObj({severity: 'info', msg: 'Lobby does not exist'});
+      }
+    } catch (error) {
+      console.log(error);
+      setShowAlert(true);
+      setAlertObj({severity: 'error', msg: 'Error fetching lobby'});
+    }
   };
 
   return (
+    <>
+    {showAlert && 
+    <AlertContainer><Alert severity={alertObj.severity}>{alertObj.msg}</Alert></AlertContainer>}
     <CenteredPaper elevation={10}>
       <Grid container direction="column" alignItems="center" spacing={3}>
         <Grid item>
@@ -71,6 +77,7 @@ const JoinLobby = () => {
         </Grid>
       </Grid>
     </CenteredPaper>
+    </>
   );
 };
 

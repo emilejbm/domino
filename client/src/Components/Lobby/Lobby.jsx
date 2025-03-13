@@ -17,10 +17,14 @@ const Lobby = () => {
   const { gameCode } = useParams()
   const { socket, sendMessage, setContext } = useSocket();
   const [playerName, setPlayerName] = useState(localStorage.getItem("playerName") || '');
-  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed') || playerName);
+  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed'));
   const [players, setPlayers] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setAvatarSeed(localStorage.getItem('avatarSeed') || playerName);
+  }, [playerName]);
 
   const sendJoinGameMessage = () => {
     sendMessage({ type: "join-game", payload: {gameCode}});

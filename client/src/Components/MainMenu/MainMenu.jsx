@@ -2,7 +2,7 @@ import {
   Grid2 as Grid,
   Typography,
 } from '@mui/material';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link as RouterLink} from "react-router-dom";
 import { CenteredPaper, StyledButton, StyledLink, StyledAvatar } from "../Shared/StyledComponents";
 
@@ -13,9 +13,13 @@ const MainMenu = () => {
   const params = useParams()
 
   const [playerName, _] = useState(localStorage.getItem("playerName") || '');
-  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed') || playerName)
+  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed'))
 
   const [isCreatingGame, setIsCreatingGame] = useState(false);
+
+  useEffect(() => {
+    setAvatarSeed(localStorage.getItem('avatarSeed') || playerName);
+  }, [playerName]);
 
   const handleCreateGame = async () => {
     setIsCreatingGame(true);
@@ -36,18 +40,6 @@ const MainMenu = () => {
 
   const handleJoinGame = async () => {
     navigate(`/join-lobby`);
-    // const response = await fetch("/join-game", {
-    //   method: "POST", 
-    //   body: JSON.stringify({ gameCode: params.gameCode, newPlayer: playerName }),
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    // })
-    // if (response.ok) {
-    //   navigate(`/lobby/${params.gameCode}`)
-    // } else {
-    //   console.error("sum happened")    
-    // }
   }
 
   return (

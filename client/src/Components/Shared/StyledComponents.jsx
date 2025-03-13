@@ -60,3 +60,14 @@ export const SettingsControl = styled(FormControl)(({ theme }) => ({
   width: '100%',
   marginBottom: theme.spacing(2),
 }));
+
+export const AlertContainer = styled('div')(({ theme }) => ({
+  position: 'fixed',
+  top: theme.spacing(2),
+  left: '50%',
+  transform: 'translateX(-50%)',
+  width: '50%',
+  maxWidth: 400,
+  zIndex: 1000,
+  textAlign: 'center',
+}));

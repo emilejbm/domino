@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	game "github.com/emilejbm/domino/server/internal/game"
@@ -36,6 +37,7 @@ func CreateRouter(gameLock *sync.Mutex) (*mux.Router, error) {
 func createRoutes(router *mux.Router) {
 	// router.HandleFunc("/", handleLandingPage).Methods("GET")
 	router.HandleFunc("/create-lobby", handleCreateLobby).Methods("GET")
+	router.HandleFunc("/lobby/", handleGetLobby).Methods("GET")
 	router.HandleFunc("/ws", socket.HandleWebSocket)
 }
 
@@ -60,6 +62,29 @@ func handleCreateLobby(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
+}
+
+func handleGetLobby(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	gameCode := parts[2]
+	log.Println("gameCode:", gameCode)
+	lobby := game.GetLobby(gameCode)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if lobby == nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte{})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte{})
 }
 
 func handleStartGame(w http.ResponseWriter, r *http.Request) {
