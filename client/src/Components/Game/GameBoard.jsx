@@ -193,9 +193,9 @@ export default function GameBoard({ gameBoard, firstDomino, dominoCoords, setDom
             if(gameBoard[index+1]){
                 nextDomo = gameBoard[index+1]
             }
-            // if (nextDomo && domino.RightSide == nextDomo.LeftSide && domino.RightSide > domino.LeftSide){
-            //     return true
-            // }
+            if (nextDomo && domino.RightSide == nextDomo.LeftSide && domino.RightSide > domino.LeftSide){
+                return true
+            }
             if (prevDomo && domino.LeftSide == prevDomo.RightSide && domino.RightSide > domino.LeftSide){
                 return true
             }
@@ -211,20 +211,20 @@ export default function GameBoard({ gameBoard, firstDomino, dominoCoords, setDom
             const needsAnimation = checkIfNewDomino(domino, index);
             return (
                 <DominoWrapper
-                    key={index}
-                    id={`domino-${index}`}
-                    as={motion.div}
-                    isDouble={true}
-                    xPos={left}
-                    yPos={top}
+                key={index}
+                id={`domino-${index}`}
+                as={motion.div}
+                isDouble={true}
+                xPos={left}
+                yPos={top}
                 >
                     <Domino
-                        key={"left-"+domino.LeftSide+",right-"+domino.RightSide}
-                        left={domino.LeftSide}
-                        right={domino.RightSide}
-                        facesVisible={true}
-                        needsRotation={needsRotation}
-                        animate={needsAnimation}
+                    key={"left-"+domino.LeftSide+",right-"+domino.RightSide}
+                    left={domino.LeftSide}
+                    right={domino.RightSide}
+                    facesVisible={true}
+                    needsRotation={needsRotation}
+                    animate={needsAnimation}
                     />
                 </DominoWrapper>
             );
