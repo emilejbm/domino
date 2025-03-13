@@ -40,6 +40,7 @@ export default function TopStack({ dominoesLeft, highlight} ) {
           left={null}
           right={null}
           sideView={false}
+          highlight={highlight}
         />
       </div>
     );

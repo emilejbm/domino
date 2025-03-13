@@ -1,16 +1,10 @@
-import React from "react";
-
-import Grid from "@mui/material/Grid2";
-import Paper from "../Shared/Paper/Paper";
-import Button from "../Shared/Button/Button";
-import Typography from "../Shared/Typography/Typography";
+import {
+  Grid2 as Grid,
+  Typography,
+} from '@mui/material';
 import { useState } from "react";
-import { Link, useNavigate, useParams} from "react-router-dom";
-// import API from "../../api/API";
-
-const style = {
-  color: "#fff",
-};
+import { useNavigate, useParams, Link as RouterLink} from "react-router-dom";
+import { CenteredPaper, StyledButton, StyledLink, StyledAvatar } from "../Shared/StyledComponents";
 
 const serverUrl = "http://localhost:8080"
 
@@ -18,10 +12,11 @@ const MainMenu = () => {
   const navigate = useNavigate();
   const params = useParams()
 
-  const [playerName, _] = useState(localStorage.getItem("playerName"));
+  const [playerName, _] = useState(localStorage.getItem("playerName") || '');
+  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed') || playerName)
+
   const [isCreatingGame, setIsCreatingGame] = useState(false);
 
-  // Function to handle creating a game
   const handleCreateGame = async () => {
     setIsCreatingGame(true);
     try {
@@ -40,68 +35,64 @@ const MainMenu = () => {
   };
 
   const handleJoinGame = async () => {
-    const response = await fetch("/join-game", {
-      method: "POST", 
-      body: JSON.stringify({ gameCode: params.gameCode, newPlayer: playerName }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-    if (response.ok) {
-      navigate(`/lobby/${params.gameCode}`)
-    } else {
-      console.error("sum happened")    
-    }
+    navigate(`/join-lobby`);
+    // const response = await fetch("/join-game", {
+    //   method: "POST", 
+    //   body: JSON.stringify({ gameCode: params.gameCode, newPlayer: playerName }),
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    // })
+    // if (response.ok) {
+    //   navigate(`/lobby/${params.gameCode}`)
+    // } else {
+    //   console.error("sum happened")    
+    // }
   }
 
   return (
-    <Paper key="main-menu">
-      <Grid container direction="column" alignItems="center" justifyContent="center" spacing={4}>
-        <Grid item xs={10}>
-          <Typography fontSize={22}>Start Playing</Typography>
-        </Grid>
-        <Grid
-          item
-          container
-          alignItems="center"
-          justifyContent="center"
-          spacing={2}
-          sx={12}
-        >
-          <Grid item xs={12} md={5}>
-            <Button
-              style={{ width: "80%" }}
-              onClick={handleCreateGame}
-              disabled={isCreatingGame}
-            >
-              <img src="assets/icons/add.svg" alt="" />
-              <Typography>Create A Game</Typography>
-            </Button>
+      <CenteredPaper key="main-menu" elevation={10}>
+        <Grid container direction="column" alignItems="center" spacing={4}>
+          <Grid item xs={12}>
+            <Typography variant="h5">Start Playing</Typography>
           </Grid>
-          <Grid item sx={{ display: { xs: "none", md: "initial" } }} md={2}>
-            <Typography>OR</Typography>
+          <Grid item container direction="row" justifyContent="center" alignItems="center" spacing={2}>
+            <Grid item xs="auto" md={5}>
+              <StyledButton
+                variant="contained"
+                sx={{ backgroundColor: 'rgb(148, 111, 7)', '&:hover': { backgroundColor: 'rgb(84, 62, 2)' } }}
+                onClick={handleCreateGame}
+                disabled={isCreatingGame}
+              >
+                <img src="assets/icons/add.svg" alt="" />
+                <Typography>Create A Game</Typography>
+              </StyledButton>
+            </Grid>
+            <Grid item sx={{ display: { xs: 'none', md: 'block' } }} md={2}>
+              <Typography>OR</Typography>
+            </Grid>
+            <Grid item xs="auto" md={5}>
+              <StyledButton
+                variant="contained"
+                sx={{ backgroundColor: 'rgb(148, 111, 7)', '&:hover': { backgroundColor: 'rgb(84, 62, 2)' } }}
+                onClick={handleJoinGame}
+              >
+                <img src="assets/icons/glob.svg" alt="" />
+                <Typography>Join A Game</Typography>
+              </StyledButton>
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={5}>
-            <Button
-             // disabled={!API.isOnline}
-              style={{ width: "80%" }}
-              onClick={handleJoinGame}
-            >
-              <img src="assets/icons/glob.svg" alt="" />
-              <Typography>Join A Game</Typography>
-            </Button>
+          <Grid teim xs={12}>
+          <StyledAvatar src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${avatarSeed}`}/>
           </Grid>
-        </Grid>
-        <Grid item container alignItems="center" justifyContent="center" mt={6}>
-          <Grid item xs={6}>
-            <Link style={style} to="/create-user">
+          <Grid item xs={12}>
+            <StyledLink component={RouterLink} to="/create-user">
               Profile Settings
-            </Link>
+            </StyledLink>
           </Grid>
         </Grid>
-      </Grid>
-    </Paper>
-  );
+      </CenteredPaper>
+    );
 };
 
 export default MainMenu;

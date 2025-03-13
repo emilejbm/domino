@@ -1,26 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
-import Paper from "../Shared/Paper/Paper";
-import Avatar from "../Shared/Avatar/Avatar";
-import Typography from "../Shared/Typography/Typography";
+import { useState, useEffect } from "react";
+import {
+  Typography,
+  Stack,
+  Avatar,
+  styled,
+} from '@mui/material';
 import Grid from "@mui/material/Grid2";
-import Stack from "@mui/material/Stack";
-import Button from "../Shared/Button/Button";
 import WaitingTextAnimation from "./WaitingTextAnimation";
-import styled from "styled-components";
 import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useSocket } from "../../socketContext";
+import AdminSettings from "./AdminSettings"
+import { CenteredPaper, StyledButton, StyledAvatar } from "../Shared/StyledComponents";
 
-const Span = styled.span`
-  color: #f37006;
-  text-shadow: 0 0 4px #f37006;
-  font-weight: bold;
-  font-size: larger;
-`;
 const Lobby = () => {
 
   const { gameCode } = useParams()
   const { socket, sendMessage, setContext } = useSocket();
-  const [playerName, _] = useState(localStorage.getItem("playerName"))
+  const [playerName, setPlayerName] = useState(localStorage.getItem("playerName") || '');
+  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed') || playerName);
   const [players, setPlayers] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,58 +66,54 @@ const Lobby = () => {
 }, []);
 
   const handleStartGame = () => {
-    sendJoinGameMessage() // tell the server player is going to start the game (player does not get deleted)
+    sendJoinGameMessage()
       navigate(`/game/${gameCode}`)
   };
 
   return (
-    <Paper>
-      <Grid container justifyContent="center" alignItems="center" spacing={2}>
-        <Grid item xs={8}>
-          <Typography>
+    <CenteredPaper >
+      <Grid container direction="column" spacing={2} alignItems="center">
+        <Grid item>
+          <Typography variant="h6">
             Waiting for Other Players To Join
             <WaitingTextAnimation />
           </Typography>
         </Grid>
-        <Grid item xs={6}>
-          <Typography>
-            Joined ( <Span>{players.length}</Span>/4 )
+        <Grid item>
+          <Typography variant="subtitle1">
+            Joined ({players.length}/4)
           </Typography>
         </Grid>
-        
-        <Grid
-          item
-          container
-          flexWrap="nowrap"
-          alignItems="center"
-          justifyContent="center"
-          spacing={0.5}
-          gap={6}
-          xs={12}
-        >
-          {players.length > 0 && players.map((player) => {
-            return (
-              <Stack
-                key={player}
-                justifyContent="center"
-                alignItems="center"
-                spacing={1}
-              >
-                {/* <Avatar seed={`${player.name}${player.img}`} /> */}
-                <Typography>{player}</Typography>
+
+        <Grid item container justifyContent="center" spacing={2}>
+          {players.map((player) => (
+            <Grid item key={player}>
+              <Stack alignItems="center" spacing={1}>
+                <StyledAvatar
+                  alt={player}
+                  src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${avatarSeed}`}
+                />
+                <Typography variant="body2">{player}</Typography>
               </Stack>
-            );
-          })}
+            </Grid>
+          ))}
+        </Grid>
+
+        <Grid item>
+          <StyledButton
+            variant="contained"
+            sx={{ backgroundColor: 'rgb(148, 111, 7)', '&:hover': { backgroundColor: 'rgb(84, 62, 2)' } }}
+            onClick={handleStartGame}
+          >
+            {players.length !== 4 ? 'Start (with Bots)' : 'Start Game'}
+          </StyledButton>
         </Grid>
       </Grid>
-      <Grid container justifyContent="center" alignItems="center" spacing={2}>
-        <Button onClick={handleStartGame}>
-        {players.length !== 4 && <Typography>Start (with Bots)</Typography>}
-        {players.length === 4 && <Typography>Start Game</Typography>}
-        </Button>
-      </Grid>
-    </Paper>
+      {<AdminSettings isAdmin={true}/>}
+    </CenteredPaper>
+    
   );
 };
 
 export default Lobby;
+

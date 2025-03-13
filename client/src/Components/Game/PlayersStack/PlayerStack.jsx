@@ -97,11 +97,10 @@ const getNextLocationOnRight = (lastDomoCoords) => {
 }
 
 export default function PlayerStack({ dominoes, isMyTurn, dominoCoords, makeMove, gameBoard }) {
+  console.log("this is the gameboard", gameBoard)
   const [hoveredDomino, setHoveredDomino] = useState(null);
   const [selectedDomino, setSelectedDomino] = useState(null);
   const [validPlacementLocations, setValidPlacementLocations] = useState([]);
-
-  console.log("selected domo", selectedDomino);
 
   useEffect(() => {
       if (hoveredDomino == null) {
@@ -110,14 +109,11 @@ export default function PlayerStack({ dominoes, isMyTurn, dominoCoords, makeMove
       }
       
       if (!gameBoard || !dominoCoords) {
-          console.log("returning early");
           setValidPlacementLocations([{ x: 0, y: 0 }]);
           return;
       }
-      console.log("calculating valid locations")
       const coordsArray = Object.values(dominoCoords);
 
-      console.log("this is the coordsArray", coordsArray);
       const leftmostLocation = coordsArray[0];
       const rightmostLocation = coordsArray[coordsArray.length - 1];
 
@@ -126,16 +122,15 @@ export default function PlayerStack({ dominoes, isMyTurn, dominoCoords, makeMove
 
       let validLocations = [];
 
-      if ((hoveredDomino.SideA === leftmostDomino.SideA) || (hoveredDomino.SideA === leftmostDomino.SideB) || 
-          (hoveredDomino.SideB === leftmostDomino.SideA) || hoveredDomino.SideB === leftmostDomino.SideB) {
+      if ((hoveredDomino.LeftSide === leftmostDomino.LeftSide) || (hoveredDomino.LeftSide === leftmostDomino.RightSide) || 
+          (hoveredDomino.RightSide === leftmostDomino.LeftSide) || hoveredDomino.RightSide === leftmostDomino.RightSide) {
           validLocations.push(getNextLocationOnLeft(leftmostLocation));
       }
-      if ((hoveredDomino.SideA === rightmostDomino.SideA) || (hoveredDomino.SideA === rightmostDomino.SideB) || 
-          (hoveredDomino.SideB === rightmostDomino.SideA) || hoveredDomino.SideB === rightmostDomino.SideB) {
+      if ((hoveredDomino.LeftSide === rightmostDomino.LeftSide) || (hoveredDomino.LeftSide === rightmostDomino.RightSide) || 
+          (hoveredDomino.RightSide === rightmostDomino.LeftSide) || hoveredDomino.RightSide === rightmostDomino.RightSide) {
           validLocations.push(getNextLocationOnRight(rightmostLocation));
       }
       
-      console.log("calculated valid locations: ", validLocations);
       //setValidPlacementLocations(validLocations);
       setValidPlacementLocations([{ x: 0, y: 0 }]);
 
@@ -159,30 +154,33 @@ export default function PlayerStack({ dominoes, isMyTurn, dominoCoords, makeMove
                           onHoverEnd={() => {
                             setHoveredDomino(null);
                           }}
-                          // onDoubleClick={() => {
-                          //   setSelectedDomino(domino);
-                          //   makeMove(domino);
-                          // }}
+                          onDoubleClick={() => {
+                            setSelectedDomino(domino);
+                            makeMove(domino, "Left");
+                          }}
                           onDragStart={() => {
-                              console.log("i'm grabbing this domino", domino);
                               setSelectedDomino(domino);
                           }}
-                          onDragEnd={() => {
+                          onDragEnd={(event) => {
                               if (selectedDomino !== null && validPlacementLocations.length > 0) {
-                                  // const closerSide = validPlacementLocations[0];
-                                  makeMove(selectedDomino, "B");
+                                  const midpoint = window.innerWidth / 2;
+                                  const mouseX = event.clientX;
+                                  if (mouseX < midpoint){
+                                    makeMove(selectedDomino, "Left");
+                                  } else {
+                                    makeMove(selectedDomino, "Right");
+                                  }    
                               }
                               setSelectedDomino(null);
-                              setHoveredDomino(null);
                           }}
                           animate={hoveredDomino === null ? { x: 0, y: 0 } : {}} // return pos after dragging
                       >
                           <div className="domo-container">
                               <Domino
                                   onGameBoard={false}
-                                  isPlayerStack={true}
-                                  left={domino.SideA}
-                                  right={domino.SideB}
+                                  facesVisible={true}
+                                  left={domino.LeftSide}
+                                  right={domino.RightSide}
                                   sideView={false}
                                   selectable={true}
                               />

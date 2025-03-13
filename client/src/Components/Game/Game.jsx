@@ -1,25 +1,20 @@
-import React from "react";
-import Grid from "@mui/material/Grid2";
-import Button from "../Shared/Button/Button";
-import Typography from "../Shared/Typography/Typography";
-import { AnimateSharedLayout } from "framer-motion";
 import PlayerStack from "./PlayersStack/PlayerStack.jsx";
 import LeftStack from "./PlayersStack/LeftStack.jsx";
 import RightStack from "./PlayersStack/RightStack.jsx";
 import TopStack from "./PlayersStack/TopStack.jsx";
 import GameBoard from "./GameBoard.jsx"
-import Scoreboard from "./Scoreboard/Scoreboard.jsx"
+import GameEndModal from "./Scoreboard/EndGameModal.jsx"
 import { useState, useEffect } from "react"
 import { useParams, useLocation } from "react-router-dom";
 import { useSocket } from "../../socketContext.jsx";
-
+import GameMovesBar from "./GameMovesBar.jsx"
 
 export default function Game() {
 
   const { gameCode } = useParams()
   const { socket, sendMessage, setContext } = useSocket();
   const [firstDomino, setFirstDomino] = useState(null);
-  const [dominoes, setDominoes] = useState([]); // type {SideA: int, SideB: int}
+  const [dominoes, setDominoes] = useState([]); // type {LeftSide: int, RightSide: int}
   const [players, setPlayers] = useState([]);
   const [playerName, _] = useState(localStorage.getItem("playerName"))
   const [gameState, setGameState] = useState("not-started")
@@ -27,11 +22,13 @@ export default function Game() {
   const [myTurn, setMyTurn] = useState(0)
   const [playerThatJustPassed, setPlayerThatJustPassed] = useState(null)
   const [dominoesLeft, setDominoesLeft] = useState([7,7,7,7]) // respective to players' turn (idx)
-  const [gameBoard, setGameBoard] = useState(null) // []Dominoes type {SideA: int, SideB: int}
+  const [gameBoard, setGameBoard] = useState(null) // []Dominoes type {LeftSide: int, RightSide: int}
   const [dominoCoords, setDominoCoords] = useState({});
   const location = useLocation();
 
-  console.log("Game state", gameState)
+  useEffect(() => {
+    sendStartGameMessage()
+  }, [])
 
   const sendJoinGameMessage = () => {
     sendMessage({type: "join-game", payload: {gameCode} })
@@ -39,10 +36,6 @@ export default function Game() {
 
   const sendStartGameMessage = () => {
     sendMessage({type: "start-game", payload: {gameCode} })
-  }
-
-  const handleStartGame = () => {
-    sendStartGameMessage()
   }
 
   const makeMove = (domino, side) => {
@@ -54,6 +47,7 @@ export default function Game() {
     if(!socketInstance) return;
     const handleGameMessage = (event) => {
       const message = JSON.parse(event.data);
+      
       switch (message.type){    
         case "game-info":
           setPlayers(message.payload.playerNames);
@@ -73,10 +67,11 @@ export default function Game() {
 
         case "game-ended":
           console.log("game-ended received");
+          setGameState("game-ended");
           break;
 
         case "someone-passed":
-          console.log("this player passed", message.payload.playerPassed)
+          console.log('someone just passed', message.payload);
           setPlayerThatJustPassed(message.payload)
           break;
 
@@ -105,27 +100,21 @@ export default function Game() {
   return (
     <>
     {gameState === "not-started" && 
-      <Grid item xs={12} md={5}>
-        <Button
-          style={{ width: "10%" }}
-          onClick={handleStartGame}
-        >
-          <img src="assets/icons/add.svg" alt="" />
-          <Typography>Start</Typography>
-        </Button>
-      </Grid>
+    <></>
     }
     {gameState === "in-progress" && 
-    // never my turn? not highlighting
     <div>
-        <PlayerStack dominoes={dominoes} isMyTurn={currentTurn === myTurn} dominoCoords={dominoCoords} makeMove={makeMove} gameBoard={gameBoard}/>
-        <RightStack dominoesLeft={dominoesLeft[(myTurn + 1)%4]} highlight={currentTurn === ((myTurn + 1)%4)} />
-        <TopStack dominoesLeft={dominoesLeft[(myTurn + 2)%4]} highlight={currentTurn === ((myTurn + 2)%4)} />
-        <LeftStack dominoesLeft={dominoesLeft[(myTurn + 3)%4]} highlight={currentTurn === ((myTurn + 3)%4)} />
-        <GameBoard gameBoard={gameBoard} firstDomino={firstDomino} dominoCoords={dominoCoords} setDominoCoords={setDominoCoords}/>
+      <GameMovesBar/>
+      <PlayerStack dominoes={dominoes} isMyTurn={currentTurn === myTurn} dominoCoords={dominoCoords} makeMove={makeMove} gameBoard={gameBoard}/>
+      <RightStack dominoesLeft={dominoesLeft[(myTurn + 1)%4]} highlight={currentTurn === ((myTurn + 1)%4)} />
+      <TopStack dominoesLeft={dominoesLeft[(myTurn + 2)%4]} highlight={currentTurn === ((myTurn + 2)%4)} />
+      <LeftStack dominoesLeft={dominoesLeft[(myTurn + 3)%4]} highlight={currentTurn === ((myTurn + 3)%4)} />
+      <GameBoard gameBoard={gameBoard} firstDomino={firstDomino} dominoCoords={dominoCoords} setDominoCoords={setDominoCoords}/>
     </div>
     }
-    {gameState === "finished" && <Scoreboard players={players} />} 
+    {gameState === "game-ended" && 
+      <GameEndModal open={true}/>
+    }
     </>
   );
 }

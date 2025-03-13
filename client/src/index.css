@@ -5,6 +5,15 @@
   box-sizing: border-box;
 }
 
+body {
+  margin: 0;
+  /* Or use background-image: url('your-image.jpg'); */
+  background: radial-gradient(rgb(145, 230, 156),rgb(24, 57, 21));
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 :root {
   --red: hsl(0, 93%, 59%);
   --yellow: hsl(55, 93%, 59%);

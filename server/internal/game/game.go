@@ -20,8 +20,8 @@ type Game struct {
 }
 
 type Domino struct {
-	SideA int
-	SideB int
+	LeftSide  int
+	RightSide int
 }
 
 type DominoNode struct {
@@ -107,22 +107,23 @@ func (g *Game) GameLoop() {
 	}
 }
 
-func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide ...string) {
+// assumes preferredSide is sent by client. client will default to left if not specified by user
+// handles swapping of domino in order to fit on table.
+// e.g. if left side (top face) of domino is to be played on left end of game table, it needs to be rotated.
+// this is handled by swapping the left and right side, client should note so that image names can be fixed
+// accordingly (rotated when right is larger than left in this naming convention {left}-{right}).
+func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !g.IsValidMove(domino, player) {
-		g.BroadcastInvalidMove(player)
-		return
-	}
 
-	// remove from hand
-	for i, d := range player.Hand {
-		if d.SideA == domino.SideA && d.SideB == domino.SideB || d.SideA == domino.SideB && d.SideB == domino.SideA {
-			player.Hand = append(player.Hand[:i], player.Hand[i+1:]...)
+	var madeValidMove bool
+	var domoInHand bool
+	for _, d := range player.Hand {
+		if d.LeftSide == domino.LeftSide && d.RightSide == domino.RightSide || d.LeftSide == domino.RightSide && d.RightSide == domino.LeftSide {
+			domoInHand = true
 			break
 		}
 	}
-
 	newNode := &DominoNode{Domino: domino}
 
 	if g.GameBoard == nil {
@@ -131,34 +132,55 @@ func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide ...string)
 
 	if g.GameBoard.LeftEnd == nil {
 		g.GameBoard.AddDominoToRightEnd(newNode)
+		madeValidMove = true
 	} else {
-		if domino.SideA == g.GameBoard.RightEnd.Domino.SideB {
-			g.GameBoard.AddDominoToRightEnd(newNode)
-		} else if domino.SideB == g.GameBoard.RightEnd.Domino.SideB {
-			// 'flip' orientation
-			domino.SideA, domino.SideB = domino.SideB, domino.SideA
-			g.GameBoard.AddDominoToRightEnd(newNode)
-		} else if domino.SideA == g.GameBoard.LeftEnd.Domino.SideA {
-			g.GameBoard.AddDominoToLeftEnd(newNode)
-		} else if domino.SideB == g.GameBoard.LeftEnd.Domino.SideA {
-			// 'flip' orientation
-			domino.SideA, domino.SideB = domino.SideB, domino.SideA
-			g.GameBoard.AddDominoToLeftEnd(newNode)
+		if preferredSide == "Left" {
+			// check if either of the dominos sides fits, if it has to be rotated, swap the order
+			if domino.RightSide == g.GameBoard.LeftEnd.Domino.LeftSide {
+				g.GameBoard.AddDominoToLeftEnd(newNode)
+				madeValidMove = true
+			} else if domino.LeftSide == g.GameBoard.LeftEnd.Domino.LeftSide {
+				newNode.swapDominoSides()
+				g.GameBoard.AddDominoToLeftEnd(newNode)
+				madeValidMove = true
+			}
+		} else if preferredSide == "Right" {
+			if domino.LeftSide == g.GameBoard.RightEnd.Domino.RightSide {
+				g.GameBoard.AddDominoToRightEnd(newNode)
+				madeValidMove = true
+			} else if domino.RightSide == g.GameBoard.RightEnd.Domino.RightSide {
+				newNode.swapDominoSides()
+				g.GameBoard.AddDominoToRightEnd(newNode)
+				madeValidMove = true
+			}
 		}
 	}
 
+	if !(domoInHand && madeValidMove) {
+		log.Println("not valid move", domoInHand, madeValidMove)
+		return
+	}
+
+	// remove from hand
+	for i, d := range player.Hand {
+		if d.LeftSide == domino.LeftSide && d.RightSide == domino.RightSide || d.LeftSide == domino.RightSide && d.RightSide == domino.LeftSide {
+			player.Hand = append(player.Hand[:i], player.Hand[i+1:]...)
+			break
+		}
+	}
 	g.CurrentTurn = (g.CurrentTurn + 1) % len(g.Players)
 	g.BroadcastUpdatedGameBoard()
+
 	if g.IsGameEnd() {
+		log.Println("does go in here")
 		g.BroadcastGameEnd()
 	}
 }
 
 func (g *Game) IsValidMove(domino *Domino, player *Player) bool {
-	// 1. Check if the player has the domino
 	hasDomino := false
 	for _, d := range player.Hand {
-		if d.SideA == domino.SideA && d.SideB == domino.SideB || d.SideA == domino.SideB && d.SideB == domino.SideA {
+		if d.LeftSide == domino.LeftSide && d.RightSide == domino.RightSide || d.LeftSide == domino.RightSide && d.RightSide == domino.LeftSide {
 			hasDomino = true
 			break
 		}
@@ -167,34 +189,66 @@ func (g *Game) IsValidMove(domino *Domino, player *Player) bool {
 		return false
 	}
 
-	// 2. Check if the move is valid according to board rules
-	if g.GameBoard == nil || g.GameBoard.LeftEnd == nil { // Empty board
-		return true // Any domino can start the game
+	if g.GameBoard == nil || g.GameBoard.LeftEnd == nil {
+		return true // any domino can start the game
 	}
 
 	leftEnd := g.GameBoard.LeftEnd
 	rightEnd := g.GameBoard.RightEnd
 
-	return domino.SideA == rightEnd.Domino.SideB || domino.SideB == rightEnd.Domino.SideB || domino.SideA == leftEnd.Domino.SideA || domino.SideB == leftEnd.Domino.SideA
+	return domino.LeftSide == rightEnd.Domino.RightSide || domino.RightSide == rightEnd.Domino.RightSide || domino.LeftSide == leftEnd.Domino.LeftSide || domino.RightSide == leftEnd.Domino.LeftSide
+}
+
+func (g *Game) SkipPlayers() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	skipCounter := 0
+	for {
+		if skipCounter > 3 {
+			g.BroadcastGameEnd()
+			return
+		}
+
+		playerPassed := true
+		p := g.Players[g.CurrentTurn]
+		leftEnd := g.GameBoard.LeftEnd.Domino.LeftSide
+		rightEnd := g.GameBoard.RightEnd.Domino.RightSide
+
+		for _, domo := range p.Hand {
+			if (domo.LeftSide == leftEnd) || (domo.RightSide == leftEnd) || (domo.RightSide == rightEnd) || (domo.LeftSide == rightEnd) {
+				playerPassed = false
+				return
+			}
+		}
+		if playerPassed {
+			g.BroadCastSomeonePassed(p)
+		}
+
+		skipCounter += 1
+		g.CurrentTurn = (g.CurrentTurn + 1) % len(g.Players)
+	}
 }
 
 func (g *Game) IsGameEnd() bool {
+	log.Println("checking is game end")
 	if g.GameBoard == nil || g.GameBoard.LeftEnd == nil {
 		return false
 	}
 
 	// wincon
 	for _, player := range g.Players {
+		log.Println(player.Hand)
 		if len(player.Hand) == 0 {
 			return true
 		}
 	}
 
-	if g.someoneCanPlay() {
+	if !g.someoneCanPlay() {
 		return true
 	}
 
-	return true // tranke
+	return true
 }
 
 // ------------------ Websocket stuff ------------------ //
@@ -295,7 +349,7 @@ func (g *Game) BroadcastInvalidMove(p *Player) {
 }
 
 func (g *Game) BroadcastGameEnd() {
-	someonePassedMessage := GameMessage{Type: "game-end", Payload: "game ended"} // should send points
+	someonePassedMessage := GameMessage{Type: "game-ended", Payload: "game ended"} // should send points
 	jsonMessage, err := json.Marshal(someonePassedMessage)
 	if err != nil {
 		log.Println("error marshaling invalid-move message")

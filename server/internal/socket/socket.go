@@ -228,10 +228,11 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 			log.Println("domino incorrectly formatted", payload)
 		}
 
-		sideA := int(domino["SideA"].(float64))
-		sideB := int(domino["SideB"].(float64))
-		log.Println("trying to play on this side", side, sideA, sideB)
-		g.MakeMove(currPlayer, &game.Domino{SideA: sideA, SideB: sideB}, side)
+		LeftSide := int(domino["LeftSide"].(float64))
+		RightSide := int(domino["RightSide"].(float64))
+		log.Println("trying to play on this side", side, LeftSide, RightSide)
+		g.MakeMove(currPlayer, &game.Domino{LeftSide: LeftSide, RightSide: RightSide}, side)
+		g.SkipPlayers()
 
 	case "leave-game": // entirely handled by defer of HandleWebSocket?
 		// payload, payloadOk := msg.Payload.(map[string]interface{})

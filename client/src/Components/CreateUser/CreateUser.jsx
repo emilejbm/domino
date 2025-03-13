@@ -1,80 +1,76 @@
-import React from "react";
-import Paper from "../Shared/Paper/Paper";
-import Grid from "@mui/material/Grid";
-import TextField from "../Shared/TextField/TextField";
-import Avatar from "../Shared/Avatar/Avatar";
-import Button from "../Shared/Button/Button";
-import Typography from "../Shared/Typography/Typography";
-import ReChoiceIcon from "./ReChoiceIcon";
+import { useEffect, useState } from 'react';
+import {
+  Grid2 as Grid,
+  Typography,
+} from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
+import ReChoiceIcon from './ReChoiceIcon';
+import { CenteredPaper, StyledButton, StyledTextField, StyledAvatar, StyledIconButton } from "../Shared/StyledComponents";
 
 const CreateUser = () => {
-  const getLocalStorageName = () => {
-    if (localStorage.getItem("playerName"))
-      return localStorage.getItem("playerName");
-    else return "";
-  };
-  const getLocalStorageImg = () => {
-    if (localStorage.getItem("playerImg"))
-      return JSON.parse(localStorage.getItem("playerImg"));
-    else return Math.random() * 100;
-  };
-  const [playerName, setPlayerName] = React.useState(getLocalStorageName);
-  const [imgSeed, setImgSeed] = React.useState(getLocalStorageImg);
 
-  React.useEffect(() => {
-    localStorage.setItem("playerName", playerName);
-    localStorage.setItem("playerImg", imgSeed);
-  }, [playerName, imgSeed]);
+  const getLocalStorageName = () => {
+    return localStorage.getItem('playerName') || '';
+  };
+
+  const [playerName, setPlayerName] = useState(getLocalStorageName);
+  const [avatarSeed, setAvatarSeed] = useState(playerName);
+
+  const handleUpdateAvatar = () => {
+    setAvatarSeed((seed) => {
+      let newSeed = seed + 1;
+      localStorage.setItem('avatarSeed', newSeed)
+      return seed + 1
+    })
+  }
+
+  useEffect(() => {
+    localStorage.setItem('playerName', playerName);
+    localStorage.setItem('avatarSeed', avatarSeed);
+  }, [playerName, avatarSeed]);
 
   return (
-    <Paper>
-      <Grid container justifyContent="center" spacing={2}>
-        <Grid item xs={10}>
-          <Typography>Enter Your Name</Typography>
+    <CenteredPaper elevation={10}>
+      <Grid container direction="column" alignItems="center" spacing={2}>
+        <Grid item xs={12}>
+          <Typography variant="h6">Enter Your Name</Typography>
         </Grid>
         <Grid item xs={10} md={6}>
-          <TextField
-            type="text"
-            placeholder=""
+          <StyledTextField
+            variant="outlined"
+            label="Player Name"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
-            pad
           />
         </Grid>
 
-        <Grid
-          item
-          container
-          justifyContent="center"
-          alignItems="center"
-          spacing={4}
-          xs={10}
-        >
-          <Grid item sx={11}>
-            <Avatar seed={`${playerName}${imgSeed}`} />
+        <Grid item container justifyContent="center" alignItems="center" spacing={2} xs={10}>
+          <Grid item>
+            <StyledAvatar src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${avatarSeed}`} alt="Player Avatar" />
           </Grid>
-          <Grid item xs={1}>
-            <Button
-              onClick={() => setImgSeed((seed) => seed + 1)}
-              style={{
-                width: "4vw",
-                height: "4vw",
-                padding: "35%",
-              }}
-            >
+          <Grid item>
+            <StyledIconButton onClick={handleUpdateAvatar}>
               <ReChoiceIcon />
-            </Button>
+            </StyledIconButton>
           </Grid>
         </Grid>
+
         <Grid item xs={10}>
-          {playerName && imgSeed && (
-            <Button href="/main-menu">
-              <Typography> Save & Go </Typography>
-            </Button>
+          {playerName && (
+            <StyledButton
+              variant="contained"
+              color="primary"
+              component={RouterLink}
+              to="/main-menu"
+              disabled={!playerName.trim()}
+              onClick={handleUpdateAvatar}
+            >
+              <Typography>Save & Go</Typography>
+            </StyledButton>
           )}
         </Grid>
       </Grid>
-    </Paper>
+    </CenteredPaper>
   );
 };
 

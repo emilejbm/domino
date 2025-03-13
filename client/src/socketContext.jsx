@@ -16,11 +16,9 @@ export const SocketProvider = ({ children }) => {
             setSocket(newSocket);
 
             newSocket.onopen = () => {
-                console.log("WebSocket connection opened");
             };
 
             newSocket.onclose = () => {
-                console.log("WebSocket connection closed");
                 setSocket(null);
             };
 

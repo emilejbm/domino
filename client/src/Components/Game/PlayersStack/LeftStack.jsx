@@ -41,6 +41,7 @@ export default function LeftStack({dominoesLeft, highlight}) {
           left={null}
           right={null}
           sideView={true}
+          highlight={highlight}
         />
       </div>
     );

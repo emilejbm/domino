@@ -64,7 +64,7 @@ func (g *Game) someoneCanPlay() bool {
 	rightEnd := g.GameBoard.RightEnd.Domino
 	for _, player := range g.Players {
 		for _, domino := range player.Hand {
-			if domino.SideA == rightEnd.SideB || domino.SideB == rightEnd.SideB || domino.SideA == leftEnd.SideA || domino.SideB == leftEnd.SideA {
+			if domino.LeftSide == rightEnd.RightSide || domino.RightSide == rightEnd.RightSide || domino.LeftSide == leftEnd.LeftSide || domino.RightSide == leftEnd.LeftSide {
 				return true
 			}
 		}
@@ -108,6 +108,12 @@ func (b *GameBoard) toDominoArray() []*Domino {
 	return dominoes
 }
 
+func (d *DominoNode) swapDominoSides() {
+	temp := d.Domino.LeftSide
+	d.Domino.LeftSide = d.Domino.RightSide
+	d.Domino.RightSide = temp
+}
+
 // ------- init stuff ------- //
 
 func CreateGameFromLobby(lobby *Lobby) (*Game, error) {
@@ -137,7 +143,7 @@ func CreateGame(gameCode ...string) (*Game, error) {
 
 func (g *Game) FindStartingTurn() *Player {
 	for i, p := range g.Players {
-		doubleSix := &Domino{SideA: 6, SideB: 6}
+		doubleSix := &Domino{LeftSide: 6, RightSide: 6}
 		if containsDomino(p.Hand, *doubleSix) {
 			g.CurrentTurn = i
 			return p
@@ -148,7 +154,7 @@ func (g *Game) FindStartingTurn() *Player {
 
 func containsDomino(hand []Domino, domino Domino) bool {
 	for _, d := range hand {
-		if d == domino || (d.SideA == domino.SideB && d.SideB == domino.SideA) { // check for both orientations
+		if d == domino || (d.LeftSide == domino.RightSide && d.RightSide == domino.LeftSide) { // check for both orientations
 			return true
 		}
 	}
@@ -159,7 +165,7 @@ func CreateDominoes() []Domino {
 	dominoes := []Domino{}
 	for i := 0; i <= 6; i++ {
 		for j := i; j <= 6; j++ {
-			dominoes = append(dominoes, Domino{SideA: i, SideB: j})
+			dominoes = append(dominoes, Domino{LeftSide: i, RightSide: j})
 		}
 	}
 	return dominoes
@@ -217,7 +223,7 @@ func (g *Game) BotMakeMove(bot *Player) {
 	time.Sleep(2 * time.Second)
 	var validDomino *Domino = nil
 	for _, domino := range bot.Hand {
-		tempDomino := &Domino{SideA: domino.SideA, SideB: domino.SideB}
+		tempDomino := &Domino{LeftSide: domino.LeftSide, RightSide: domino.RightSide}
 		if g.IsValidMove(tempDomino, bot) {
 			validDomino = tempDomino
 			break
@@ -225,8 +231,12 @@ func (g *Game) BotMakeMove(bot *Player) {
 	}
 
 	if validDomino != nil {
-		g.MakeMove(bot, validDomino)
 		log.Println("bot is making a move ")
+		gameBoardLengthBeforeMove := len(g.GameBoard.toDominoArray())
+		g.MakeMove(bot, validDomino, "Left")
+		if len(g.GameBoard.toDominoArray()) == gameBoardLengthBeforeMove {
+			g.MakeMove(bot, validDomino, "Right")
+		}
 		g.BroadcastUpdatedGameBoard()
 	} else {
 		log.Println("bot passed")

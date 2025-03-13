@@ -92,7 +92,6 @@ export default function StartPage() {
               }
         }
         onAnimationComplete={() => {
-          console.log('finished anim')
           setMounted(true)}
         }
       >

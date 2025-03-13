@@ -1,13 +1,9 @@
 import styled from "styled-components";
 import Image from "../Image/Image";
 import { motion } from "framer-motion";
-// import API from "../../../api/API";
 
 const Root = styled.div`
   --color: var(--${(props) => props.color});
-
-  transform: ${(props) => (props.sideView ? "perspective(800px) rotateY(80deg)" : "none")};
-  transform: ${(props) => (props.onGameBoard ? `rotate(90deg) translateY(calc(var(--domoWidth) / -4))` : "none")};
   width: var(--domoWidth);
   height: var(--domoHeight);
 
@@ -16,16 +12,16 @@ const Root = styled.div`
   border-radius: calc(var(--domoWidth) / 10);
 
   box-shadow: ${(props) =>
-    !props.disableShadow ? "0 0 10px #292727" : "none"};
+    !props.disableShadow ? "0 0 10px #292727" : "none"
+  };
   position: relative;
   transform-style: preserve-3d;
-
-  cursor: ${(props) => (props.playable ? "pointer" : "inherit")};
+  cursor: "pointer";
 
   .front,
   .back {
     border-radius: calc(var(--domoWidth) / 6);
-    background: whitesmoke;
+    background: ${(props) => props.highlight ? "white" : "whitesmoke" };
     position: absolute;
     top: 0;
     left: 0;
@@ -37,8 +33,6 @@ const Root = styled.div`
   }
 
   .front {
-    transform: rotateY(0deg) translateZ(1px);
-    z-index: 2;
     font-family: sans-serif;
   }
 
@@ -48,12 +42,13 @@ const Root = styled.div`
 `;
 
 export default function Domino({
-  onGameBoard = false,
-  isPlayerStack = false,
+  facesVisible = false,
   left = "",
   right = "",
   sideView = false,
-  selectable = false,
+  highlight = false,
+  needsRotation = true,
+  animate = false,
 }) {
 
   const dominoNumToString = (num) => {
@@ -76,8 +71,8 @@ export default function Domino({
   const getFrontContent = () => {
     const backUpImgSrc = `/images/${dominoNumToString(right)}-${dominoNumToString(left)}.png`
 
-    if (isPlayerStack && left !== undefined && right !== undefined) {
-      // check if left-right.png exists, if not right-left.png probably does
+    // check if left-right.png exists, if not right-left.png probably does
+    if (facesVisible && left !== undefined && right !== undefined) {
       return (
         <Image src={`/images/${dominoNumToString(left)}-${dominoNumToString(right)}.png`} ratio={470 / 230} backUpImgSrc={backUpImgSrc}/>
       );
@@ -87,27 +82,23 @@ export default function Domino({
   return (
     <Root
       as={motion.div}
-      sideView={sideView}
       disableShadow={false}
       color="white"
       className="noselect"
-      initial={{
-        rotateY: true ? Math.abs(180 - 180) : 180,
+      whileHover={{ y: -40, transition: { duration: 0.3 } }}
+      animate={{
+        rotate: facesVisible && needsRotation ? 180 : 0, // add animate?
         y: 0,
       }}
-      whileHover={
-        true
-          ? { y: -40, transition: { duration: 0.3 } }
-          : { y: 0, transition: { duration: 0.3 } }
-      }
-      animate={{ rotateY: isPlayerStack ? 0 : 180, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeInOut" }}
+      transition={{ duration: animate ? 0.4 : 0, ease: "easeInOut" }}
       selectable={true}
-      playable={true}
-      onGameBoard={onGameBoard}
+      sideView={sideView}
+      facesVisible={facesVisible}
+      needsRotation={needsRotation}
+      highlight={highlight}
     >
       <div className="front">{getFrontContent()}</div>
-      <div className="back">{getBackContent()}</div>
+      <div className="back"></div>
     </Root>
   );
 }
