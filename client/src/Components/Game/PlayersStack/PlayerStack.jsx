@@ -97,7 +97,6 @@ const getNextLocationOnRight = (lastDomoCoords) => {
 }
 
 export default function PlayerStack({ dominoes, isMyTurn, dominoCoords, makeMove, gameBoard }) {
-  console.log("this is the gameboard", gameBoard)
   const [hoveredDomino, setHoveredDomino] = useState(null);
   const [selectedDomino, setSelectedDomino] = useState(null);
   const [validPlacementLocations, setValidPlacementLocations] = useState([]);
@@ -177,12 +176,12 @@ export default function PlayerStack({ dominoes, isMyTurn, dominoCoords, makeMove
                       >
                           <div className="domo-container">
                               <Domino
-                                  onGameBoard={false}
-                                  facesVisible={true}
-                                  left={domino.LeftSide}
-                                  right={domino.RightSide}
-                                  sideView={false}
-                                  selectable={true}
+                                onGameBoard={false}
+                                facesVisible={true}
+                                left={domino.LeftSide}
+                                right={domino.RightSide}
+                                sideView={false}
+                                selectable={true}
                               />
                           </div>
                       </motion.div>
@@ -190,10 +189,10 @@ export default function PlayerStack({ dominoes, isMyTurn, dominoCoords, makeMove
               </Row>
           )}
       </PlayerStackStyle>
-      {hoveredDomino &&
+      {/* {hoveredDomino &&
         validPlacementLocations.map((location, idx) => (
             <DropIndicator key={idx} xpos={location.x} ypos={location.y} />
-        ))}
+        ))} */}
       </>
   );
 }

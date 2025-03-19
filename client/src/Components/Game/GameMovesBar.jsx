@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
 import { Box, Typography, Avatar, styled, Paper } from '@mui/material';
 
 const MovesListContainer = styled(Paper)(({ theme }) => ({
   position: 'fixed',
   top: theme.spacing(2),
   right: theme.spacing(2),
-  width: 300,
-  maxHeight: 400,
+  width: '15vw',
+  maxHeight: '10vh',
   overflowY: 'auto',
+  overflowX: 'auto',
   padding: theme.spacing(2),
   zIndex: 1000,
 }));
@@ -24,28 +24,24 @@ const MoveAvatar = styled(Avatar)(({ theme }) => ({
   marginRight: theme.spacing(1),
 }));
 
-const moves = [
-    {
-      playerName: "player1",
-      avatar: '/static/images/avatar/5.jpg',
-      played: "5,4"
-    },
-]
-export default function MovesList(){
+export default function MovesList({ movesSoFar, players, startingMove }){
   return (
     <MovesListContainer elevation={3}>
       <Typography variant="h6" gutterBottom>
         Moves
       </Typography>
-      {moves.map((move, index) => (
+      {movesSoFar.map((move, index) => {
+        const playerName = players[(startingMove.playerIdx+index)%4]
+        return (
         <MoveItem key={index}>
-          <MoveAvatar alt={move.playerName} src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${move.playerName}`} />
+          <MoveAvatar src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${playerName}`} />
           <Box>
-            <Typography variant="subtitle2">{move.name}</Typography>
-            <Typography variant="body2">{move.played}</Typography>
+            {move && <Typography variant="body2">{`${playerName}: ${move.LeftSide},${move.RightSide}`}</Typography>}
+            {move == null && <Typography variant="body2">{`${playerName}: pass`}</Typography>}
           </Box>
         </MoveItem>
-      ))}
+        )
+      })}
     </MovesListContainer>
   );
 };

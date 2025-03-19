@@ -6,7 +6,8 @@ import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
   <SocketProvider>
-    <CssBaseline />
-        <App />
+    <CssBaseline>
+      <App />
+    </CssBaseline>
   </SocketProvider>
 )

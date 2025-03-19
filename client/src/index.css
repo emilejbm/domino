@@ -69,38 +69,3 @@ code {
     monospace;
 }
 
-.noselect {
-  -webkit-touch-callout: none; /* iOS Safari */
-  -webkit-user-select: none; /* Safari */
-  -khtml-user-select: none; /* Konqueror HTML */
-  -moz-user-select: none; /* Old versions of Firefox */
-  -ms-user-select: none; /* Internet Explorer/Edge */
-  user-select: none; /* Non-prefixed version, currently
-                                  supported by Chrome, Edge, Opera and Firefox */
-}
-
-.card-container {
-  perspective: 800px;
-  width: var(--cardWidth);
-}
-
-/* width */
-::-webkit-scrollbar {
-  display: none;
-}
-
-/* Track */
-::-webkit-scrollbar-track {
-  background: #161d3f;
-}
-
-/* Handle */
-::-webkit-scrollbar-thumb {
-  border-radius: 20px;
-  background-color: black;
-}
-
-/* Handle on hover */
-::-webkit-scrollbar-thumb:hover {
-  background-color: #161d3f;
-}

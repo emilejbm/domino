@@ -2,10 +2,8 @@ import {
   Modal,
   Box,
   Typography,
-  styled,
-  Button,
-  Avatar as MuiAvatar,
 } from '@mui/material';
+import { TeamRow, TeamMembers, TeamMember, StyledAvatar, StyledButton } from '../../Shared/StyledComponents';
 
 const modalStyle = {
   position: 'absolute',
@@ -20,57 +18,18 @@ const modalStyle = {
   textAlign: 'center',
 };
 
-const StyledButton = styled(Button)(() => ({
-    marginTop: '20px',
-}))
-
-const Cavatar = styled(MuiAvatar)(() => ({
-    width: '50px',
-    height: '50px',
-    borderRadius: '50%',
-}))
-
-const Avatar = ({ seed }) => {
-  return (
-    <Cavatar>
-      <img src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${seed}`} alt={`${seed} avatar`} />
-    </Cavatar>
-  );
-};
-
-const TeamRow = styled(Box)(({ theme }) => ({
-    marginBottom: theme.spacing(2),
-    border: '1px solid #ccc',
-    padding: theme.spacing(2),
-    borderRadius: theme.spacing(1),
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  }));
-  
-const TeamMembers = styled(Box)({
-    display: 'flex',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-});
-
-const TeamMember = styled(Box)({
-    textAlign: 'center',
-    width: '50%',
-    padding: '8px',
-});
-  
-
-function TeamDisplay({ team, points, teamName }) {
+function TeamDisplay({ team, points }) {
     return (
         <TeamRow>
             <Box flex="1">
-                {teamName && <Typography variant="subtitle1">{teamName}</Typography>}
+                {/* {teamName && <Typography variant="subtitle1">{teamName}</Typography>} */}
                 <TeamMembers>
                     {team.map((player) => (
-                        <TeamMember key={player.name}>
-                            <Avatar seed={player.name} />
-                            <Typography>{player.name}</Typography>
+                        <TeamMember key={player}>
+                            <StyledAvatar>
+                              <img src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${player}`} />
+                            </StyledAvatar>
+                            <Typography>{player}</Typography>
                         </TeamMember>
                     ))}
                 </TeamMembers>
@@ -82,26 +41,30 @@ function TeamDisplay({ team, points, teamName }) {
     );
 }
 
-export default function GameEndModal({ open, onClose, winnerTeam, loserTeam, winnerPoints, loserPoints }) {
+export default function GameEndModal({ open, players, gameEndStats, playAgain }) {
+  const { winningTeam, pointsSoFar, roundPoints } = gameEndStats;
+  console.log("game end modal info", winningTeam, pointsSoFar, roundPoints)
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      //onClose={onClose}
       aria-labelledby="game-end-modal-title"
       aria-describedby="game-end-modal-description"
     >
       <Box sx={modalStyle}>
         <Typography id="game-end-modal-title" variant="h6" component="h2">
-          Game Ended!
+          Game Ended
         </Typography>
         <Typography id="game-end-modal-description" sx={{ mt: 2 }}>
-          {winnerTeam ? `Winners!` : 'It\'s a draw!'}
+          { (winningTeam == 0 ? `${players[0]} & ${players[2]}` : `${players[1]} & ${players[3]}`) + " won "}
+          { `${roundPoints} points`}
         </Typography>
+        <br></br>
 
-        {winnerTeam && <TeamDisplay team={winnerTeam} points={winnerPoints} teamName={"Winning Team"}/>}
-        {loserTeam && <TeamDisplay team={loserTeam} points={loserPoints} teamName={"Losing Team"}/>}
+        {<TeamDisplay team={[players[0],players[2]]} points={pointsSoFar[0]}/>}
+        {<TeamDisplay team={[players[1],players[3]]} points={pointsSoFar[1]}/>}
 
-        <StyledButton variant="contained" onClick={onClose}>
+        <StyledButton variant="contained" onClick={playAgain}>
           Play Again
         </StyledButton>
       </Box>

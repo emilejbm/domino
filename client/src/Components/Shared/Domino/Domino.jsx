@@ -69,12 +69,12 @@ export default function Domino({
   }
 
   const getFrontContent = () => {
-    const backUpImgSrc = `/images/${dominoNumToString(right)}-${dominoNumToString(left)}.png`
+    const backUpImgSrc = `/images/${dominoNumToString(left)}-${dominoNumToString(right)}.png`
 
     // check if left-right.png exists, if not right-left.png probably does
     if (facesVisible && left !== undefined && right !== undefined) {
       return (
-        <Image src={`/images/${dominoNumToString(left)}-${dominoNumToString(right)}.png`} ratio={470 / 230} backUpImgSrc={backUpImgSrc}/>
+        <Image src={`/images/${dominoNumToString(right)}-${dominoNumToString(left)}.png`} ratio={470 / 230} backUpImgSrc={backUpImgSrc}/>
       );
     }
   }

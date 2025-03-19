@@ -26,6 +26,8 @@ func PrintAllLobbyInfo() {
 // ------- game state stuff ------- //
 
 func GetPlayersGame(clientID string) *Game {
+	ActiveGamesMu.Lock()
+	defer ActiveGamesMu.Unlock()
 	for _, g := range ActiveGames {
 		for _, p := range g.Players {
 			if p.ID == clientID {
@@ -73,8 +75,45 @@ func (g *Game) someoneCanPlay() bool {
 	return false
 }
 
+func (g *Game) CalculateAndUpdatePoints() (team int, points int) {
+	var teamAPoints int
+	var teamBPoints int
+	var winningTeam = -1
+	for i, p := range g.Players {
+		if len(p.Hand) == 0 {
+			winningTeam = i % 2
+			g.LatestWinner = p
+		}
+		for _, domino := range p.Hand {
+			if i%2 == 0 {
+				teamAPoints += domino.LeftSide
+				teamAPoints += domino.RightSide
+			} else {
+				teamBPoints += domino.LeftSide
+				teamBPoints += domino.RightSide
+			}
+		}
+	}
+
+	if winningTeam == -1 {
+		// hubo tranque
+		if teamAPoints < teamBPoints {
+			winningTeam = 0
+			g.LatestWinner = g.Players[0]
+		} else {
+			winningTeam = 1
+			g.LatestWinner = g.Players[1]
+		}
+	}
+	g.Points[winningTeam] += teamAPoints + teamBPoints
+	g.LatestWinningTeam = winningTeam
+	return winningTeam, teamAPoints + teamBPoints
+}
+
 // add to tail
 func (b *GameBoard) AddDominoToRightEnd(newNode *DominoNode) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.LeftEnd == nil {
 		b.LeftEnd = newNode
 		b.RightEnd = newNode
@@ -87,6 +126,8 @@ func (b *GameBoard) AddDominoToRightEnd(newNode *DominoNode) {
 
 // add to head
 func (b *GameBoard) AddDominoToLeftEnd(newNode *DominoNode) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.LeftEnd == nil {
 		b.LeftEnd = newNode
 		b.RightEnd = newNode
@@ -114,6 +155,13 @@ func (d *DominoNode) swapDominoSides() {
 	d.Domino.RightSide = temp
 }
 
+func (b *GameBoard) ClearGameBoard() {
+	b.mu.Lock()
+	b.LeftEnd = nil
+	b.RightEnd = nil
+	b.mu.Unlock()
+}
+
 // ------- init stuff ------- //
 
 func CreateGameFromLobby(lobby *Lobby) (*Game, error) {
@@ -122,7 +170,14 @@ func CreateGameFromLobby(lobby *Lobby) (*Game, error) {
 	if lobby == nil {
 		return nil, errors.New("lobby is nil")
 	}
-	newGame := &Game{GameCode: lobby.GameCode, GameBoard: &GameBoard{}, Players: lobby.Players, State: "not-started"}
+	newGame := &Game{
+		GameCode:   lobby.GameCode,
+		GameBoard:  &GameBoard{},
+		Players:    lobby.Players,
+		Points:     [2]int{0, 0},
+		Paused:     false,
+		MovesSoFar: []*Domino{},
+	}
 	ActiveGames[newGame.GameCode] = newGame
 	return newGame, nil
 }
@@ -135,21 +190,32 @@ func CreateGame(gameCode ...string) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
-	newGame := &Game{GameCode: newGameCode, GameBoard: &GameBoard{}, State: "Lobby"}
+	newGame := &Game{
+		GameCode:   newGameCode,
+		GameBoard:  &GameBoard{},
+		Points:     [2]int{0, 0},
+		Paused:     false,
+		MovesSoFar: []*Domino{},
+	}
 	ActiveGames[newGame.GameCode] = newGame
 
 	return newGame, nil
 }
 
-func (g *Game) FindStartingTurn() *Player {
+func (g *Game) FindStartingTurn() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	doubleSix := &Domino{LeftSide: 6, RightSide: 6}
 	for i, p := range g.Players {
-		doubleSix := &Domino{LeftSide: 6, RightSide: 6}
-		if containsDomino(p.Hand, *doubleSix) {
+		if containsDomino(p.Hand, *doubleSix) && g.LatestWinner == nil {
 			g.CurrentTurn = i
-			return p
+			return
+		} else if p == g.LatestWinner {
+			g.CurrentTurn = i
+			return
 		}
 	}
-	return nil
 }
 
 func containsDomino(hand []Domino, domino Domino) bool {
@@ -178,17 +244,6 @@ func shuffleDominoes() []Domino {
 		dominoes[i], dominoes[j] = dominoes[j], dominoes[i]
 	})
 	return dominoes
-}
-
-func DealDominoes(dominoes []Domino, players []*Player) {
-	numPlayers := len(players)
-	dominoesPerPlayer := 7
-
-	for i := 0; i < dominoesPerPlayer; i++ {
-		for j := 0; j < numPlayers; j++ {
-			players[j].Hand = append(players[j].Hand, dominoes[i*numPlayers+j])
-		}
-	}
 }
 
 func generateGameCode() (string, error) {
@@ -231,7 +286,6 @@ func (g *Game) BotMakeMove(bot *Player) {
 	}
 
 	if validDomino != nil {
-		log.Println("bot is making a move ")
 		gameBoardLengthBeforeMove := len(g.GameBoard.toDominoArray())
 		g.MakeMove(bot, validDomino, "Left")
 		if len(g.GameBoard.toDominoArray()) == gameBoardLengthBeforeMove {
@@ -240,14 +294,15 @@ func (g *Game) BotMakeMove(bot *Player) {
 		g.BroadcastUpdatedGameBoard()
 	} else {
 		log.Println("bot passed")
+		g.MovesSoFar = append(g.MovesSoFar, nil)
 		g.CurrentTurn = (g.CurrentTurn + 1) % len(g.Players)
 		g.BroadCastSomeonePassed(bot)
 	}
 }
 
 func (g *Game) fillWithBots() {
-	// g.mu.Lock()
-	// defer g.mu.Unlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	requiredNumberOfPlayers := 4
 
 	for i := len(g.Players); i < requiredNumberOfPlayers; i++ {

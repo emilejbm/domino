@@ -1,16 +1,18 @@
 import { styled } from '@mui/material/styles';
-import { Paper, Button, Link, IconButton, TextField, FormControl, Avatar } from '@mui/material';
+import { Paper, Button, Link, IconButton, TextField, FormControl, Avatar, Box } from '@mui/material';
 
 export const CenteredPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(8),
-  position: 'fixed',
+  position: 'absolute',
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
   maxWidth: "auto",
   minHeight: "20%",
+  maxHeight: "80%",
   textAlign: 'center',
   margin: 'auto',
+  overflowY: "auto",
 }));
 
 export const StyledButton = styled(Button)(({ theme, variant, sx }) => ({
@@ -50,6 +52,8 @@ export const StyledIconButton = styled(IconButton)(({ theme }) => ({
 }));
 
 export const SettingsPaper = styled(Paper)(({ theme }) => ({
+  position: "relative",
+  overflowY: "auto",
   padding: theme.spacing(3),
   maxWidth: 400,
   margin: 'auto',
@@ -71,3 +75,25 @@ export const AlertContainer = styled('div')(({ theme }) => ({
   zIndex: 1000,
   textAlign: 'center',
 }));
+
+export const TeamRow = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  border: '1px solid #ccc',
+  padding: theme.spacing(2),
+  borderRadius: theme.spacing(1),
+  display: 'flex',
+  justifyContent: 'space-around',
+  alignItems: 'center',
+}));
+  
+export const TeamMembers = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  flexWrap: 'wrap',
+});
+
+export const TeamMember = styled(Box)({
+  textAlign: 'center',
+  width: '50%',
+  padding: '8px',
+});

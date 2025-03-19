@@ -179,7 +179,6 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 		}
 
 	case "start-game":
-		// should do this by clientID (find game client id is in and start it)
 		payload, payloadOk := msg.Payload.(map[string]interface{})
 		gameCode, codeOk := payload["gameCode"].(string)
 		if !payloadOk || !codeOk {
@@ -187,14 +186,16 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 			break
 		}
 
-		currGame := game.GetGame(gameCode)
-		if currGame == nil {
+		g := game.GetGame(gameCode)
+		if g == nil {
 			log.Println("no game exists")
 			break
 		}
 
-		currGame.InitGame()
-		go currGame.GameLoop()
+		g.InitGame()
+		g.BroadcastGameInfo()
+		g.BroadcastUpdatedGameBoard()
+		go g.GameLoop()
 
 	case "game-action":
 		payload, payloadOk := msg.Payload.(map[string]interface{})
@@ -230,9 +231,15 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 
 		LeftSide := int(domino["LeftSide"].(float64))
 		RightSide := int(domino["RightSide"].(float64))
-		log.Println("trying to play on this side", side, LeftSide, RightSide)
 		g.MakeMove(currPlayer, &game.Domino{LeftSide: LeftSide, RightSide: RightSide}, side)
 		g.SkipPlayers()
+
+	case "play-again":
+		g := game.GetPlayersGame(clientID)
+		g.RestartGame()
+		g.BroadcastGameInfo()
+		g.BroadcastUpdatedGameBoard()
+		g.Paused = false
 
 	case "leave-game": // entirely handled by defer of HandleWebSocket?
 		// payload, payloadOk := msg.Payload.(map[string]interface{})

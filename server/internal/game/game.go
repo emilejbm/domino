@@ -4,19 +4,26 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 // ////////////////////////////////// structs ////////////////////////////////////
 type Game struct {
-	GameCode    string // Unique game code
-	GameBoard   *GameBoard
-	Players     []*Player
-	TurnOrder   []string // Order of players' turns
-	CurrentTurn int      // Index of the current player
-	State       string   // Game state: "lobby", "waiting", "active", or "completed"
-	mu          sync.Mutex
+	GameCode          string
+	GameBoard         *GameBoard
+	Players           []*Player
+	CurrentTurn       int
+	StartingMove      Move
+	Points            [2]int
+	LatestWinningTeam int
+	LatestWinner      *Player
+	PlayerMoveMu      sync.Mutex
+	MovesSoFar        []*Domino
+	Paused            bool
+
+	mu sync.Mutex
 }
 
 type Domino struct {
@@ -33,6 +40,7 @@ type DominoNode struct {
 type GameBoard struct {
 	LeftEnd  *DominoNode `json:"dominoes"` // head
 	RightEnd *DominoNode `json:"-"`        // tail
+	mu       sync.Mutex
 }
 
 type Player struct {
@@ -61,7 +69,20 @@ type UpdatedGameBoard struct {
 	GameBoard          []*Domino `json:"gameBoard"`
 	TurnToDominoesLeft []int     `json:"dominoesLeft"`
 	CurrentTurn        int       `json:"currentTurn"`
+	StartingMove       Move      `json:"startingMove"`
 	MyHand             []Domino  `json:"hand"`
+	MovesSoFar         []*Domino `json:"movesSoFar"`
+}
+
+type Move struct {
+	Domino    *Domino `json:"domino"`
+	PlayerIdx int     `json:"playerIdx"`
+}
+
+type GameEndStats struct {
+	WinningTeam int    `json:"winningTeam"` // just an index. 0 for team A (players 0 and 2), 1 for team B (players 1, 3)
+	RoundPoints int    `json:"roundPoints"`
+	PointsSoFar [2]int `json:"pointsSoFar"`
 }
 
 // ////////////////////////////////////////////////////////////////////////////////////////
@@ -71,8 +92,6 @@ var ActiveGames = make(map[string]*Game)
 // game already has GameCode, Players
 // need to establish player turns, fill with bots
 func (g *Game) InitGame() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
 	dominoes := shuffleDominoes()
 
 	// fill with bots if needed
@@ -85,23 +104,27 @@ func (g *Game) InitGame() {
 		p.Hand = dominoes[i*7 : ((i + 1) * 7)]
 	}
 
-	// assign current turn to person with double six
 	g.FindStartingTurn()
 
-	// broadcast slices of dominoes to players
-	g.BroadcastGameInfo()
+}
 
-	// broadcast players turn
-	g.BroadcastUpdatedGameBoard() // just to send current turn
+func (g *Game) RestartGame() {
+	g.GameBoard.ClearGameBoard()
+	g.InitGame()
+	g.MovesSoFar = g.MovesSoFar[:0]
 }
 
 func (g *Game) GameLoop() {
 
 	for {
-		currentPlayer := g.Players[g.CurrentTurn]
 
-		if currentPlayer.IsBot {
-			g.BotMakeMove(currentPlayer)
+		if !g.Paused {
+			currentPlayer := g.Players[g.CurrentTurn]
+
+			if currentPlayer.IsBot {
+				g.BotMakeMove(currentPlayer)
+				time.Sleep(1 * time.Second)
+			}
 		}
 
 	}
@@ -113,8 +136,8 @@ func (g *Game) GameLoop() {
 // this is handled by swapping the left and right side, client should note so that image names can be fixed
 // accordingly (rotated when right is larger than left in this naming convention {left}-{right}).
 func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.PlayerMoveMu.Lock()
+	defer g.PlayerMoveMu.Unlock()
 
 	var madeValidMove bool
 	var domoInHand bool
@@ -131,8 +154,14 @@ func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide string) {
 	}
 
 	if g.GameBoard.LeftEnd == nil {
-		g.GameBoard.AddDominoToRightEnd(newNode)
+		g.GameBoard.AddDominoToLeftEnd(newNode)
 		madeValidMove = true
+		for i, p := range g.Players {
+			if p == player {
+				log.Println("this is getting called!!!!!!")
+				g.StartingMove = Move{Domino: domino, PlayerIdx: i}
+			}
+		}
 	} else {
 		if preferredSide == "Left" {
 			// check if either of the dominos sides fits, if it has to be rotated, swap the order
@@ -161,18 +190,21 @@ func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide string) {
 		return
 	}
 
-	// remove from hand
+	// remove from hand + add to game history
 	for i, d := range player.Hand {
 		if d.LeftSide == domino.LeftSide && d.RightSide == domino.RightSide || d.LeftSide == domino.RightSide && d.RightSide == domino.LeftSide {
+			g.MovesSoFar = append(g.MovesSoFar, &d)
 			player.Hand = append(player.Hand[:i], player.Hand[i+1:]...)
 			break
 		}
 	}
+	g.mu.Lock()
 	g.CurrentTurn = (g.CurrentTurn + 1) % len(g.Players)
+	g.mu.Unlock()
 	g.BroadcastUpdatedGameBoard()
 
 	if g.IsGameEnd() {
-		log.Println("does go in here")
+		g.Paused = true
 		g.BroadcastGameEnd()
 	}
 }
@@ -200,12 +232,9 @@ func (g *Game) IsValidMove(domino *Domino, player *Player) bool {
 }
 
 func (g *Game) SkipPlayers() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
 	skipCounter := 0
 	for {
-		if skipCounter > 3 {
+		if skipCounter > 2 {
 			g.BroadcastGameEnd()
 			return
 		}
@@ -222,11 +251,14 @@ func (g *Game) SkipPlayers() {
 			}
 		}
 		if playerPassed {
+			skipCounter += 1
+			g.MovesSoFar = append(g.MovesSoFar, nil)
 			g.BroadCastSomeonePassed(p)
 		}
 
-		skipCounter += 1
+		g.mu.Lock()
 		g.CurrentTurn = (g.CurrentTurn + 1) % len(g.Players)
+		g.mu.Unlock()
 	}
 }
 
@@ -236,7 +268,6 @@ func (g *Game) IsGameEnd() bool {
 		return false
 	}
 
-	// wincon
 	for _, player := range g.Players {
 		log.Println(player.Hand)
 		if len(player.Hand) == 0 {
@@ -244,17 +275,15 @@ func (g *Game) IsGameEnd() bool {
 		}
 	}
 
-	if !g.someoneCanPlay() {
-		return true
-	}
-
-	return true
+	return !g.someoneCanPlay()
 }
 
 // ------------------ Websocket stuff ------------------ //
 
 // used when starting game or someone is rejoining. lets other users know someone rejoined + the player receives his playing hand.
 func (g *Game) BroadcastGameInfo() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 
 	playerNames := make([]string, len(g.Players))
 	for i, p := range g.Players {
@@ -283,6 +312,9 @@ func (g *Game) BroadcastGameInfo() {
 }
 
 func (g *Game) BroadCastSomeonePassed(p *Player) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	someonePassedMessage := GameMessage{Type: "someone-passed", Payload: p.Name}
 	jsonMessage, err := json.Marshal(someonePassedMessage)
 	if err != nil {
@@ -299,6 +331,9 @@ func (g *Game) BroadCastSomeonePassed(p *Player) {
 }
 
 func (g *Game) BroadcastUpdatedGameBoard() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if g.GameBoard == nil {
 		return
 	}
@@ -316,6 +351,8 @@ func (g *Game) BroadcastUpdatedGameBoard() {
 			TurnToDominoesLeft: dominoesLeft,
 			CurrentTurn:        g.CurrentTurn,
 			MyHand:             player.Hand,
+			StartingMove:       g.StartingMove,
+			MovesSoFar:         g.MovesSoFar,
 		}}
 
 		jsonMessage, err := json.Marshal(message)
@@ -334,6 +371,9 @@ func (g *Game) BroadcastUpdatedGameBoard() {
 }
 
 func (g *Game) BroadcastInvalidMove(p *Player) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	invalidMoveMessage := GameMessage{Type: "invalid-move", Payload: "no"}
 	jsonMessage, err := json.Marshal(invalidMoveMessage)
 	if err != nil {
@@ -349,8 +389,16 @@ func (g *Game) BroadcastInvalidMove(p *Player) {
 }
 
 func (g *Game) BroadcastGameEnd() {
-	someonePassedMessage := GameMessage{Type: "game-ended", Payload: "game ended"} // should send points
-	jsonMessage, err := json.Marshal(someonePassedMessage)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	_, points := g.CalculateAndUpdatePoints()
+	gameEndedMessage := GameMessage{Type: "game-ended", Payload: GameEndStats{
+		WinningTeam: g.LatestWinningTeam,
+		RoundPoints: points,
+		PointsSoFar: g.Points,
+	}}
+	jsonMessage, err := json.Marshal(gameEndedMessage)
 	if err != nil {
 		log.Println("error marshaling invalid-move message")
 		return

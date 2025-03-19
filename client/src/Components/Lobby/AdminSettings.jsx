@@ -51,19 +51,6 @@ const SettingsList = ({ isAdmin, settings, onSettingChange }) => {
           </Select>
         </SettingsControl>
 
-        <SettingsControl>
-          <InputLabel id="teammate-label">Pick Teammate</InputLabel>
-          <Select
-            labelId="teammate-label"
-            id="teammate-select"
-            value={settings.pickTeammate}
-            label="Pick Teammate"
-            onChange={(e) => onSettingChange('pickTeammate', e.target.value)}
-          >
-            <MenuItem value="Enabled">Enabled</MenuItem>
-            <MenuItem value="Disabled">Disabled</MenuItem>
-          </Select>
-        </SettingsControl>
       </Stack>
     </SettingsPaper>
   );
@@ -73,7 +60,6 @@ function AdminSettings({ isAdmin }) {
   const [settings, setSettings] = useState({
     showMoves: 'On',
     timer: '30s',
-    pickTeammate: 'Enabled',
   });
 
   const handleSettingChange = (settingName, newValue) => {
