@@ -19,8 +19,7 @@ const CreateUser = () => {
   const handleUpdateAvatar = () => {
     setAvatarSeed((seed) => {
       let newSeed = seed + 1;
-      localStorage.setItem('avatarSeed', newSeed)
-      return seed + 1
+      return newSeed;
     })
   }
 
@@ -63,7 +62,6 @@ const CreateUser = () => {
               component={RouterLink}
               to="/main-menu"
               disabled={!playerName.trim()}
-              onClick={handleUpdateAvatar}
             >
               <Typography>Save & Go</Typography>
             </StyledButton>

@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -130,6 +131,22 @@ func (g *Game) GameLoop() {
 	}
 }
 
+func (g *Game) IsEmpty() bool {
+	for _, p := range g.Players {
+		if !strings.HasPrefix(p.Name, "Bot-") {
+			return false
+		}
+	}
+	return true
+}
+
+func (g *Game) RemoveFromActiveGames() {
+	ActiveGamesMu.Lock()
+	defer ActiveGamesMu.Unlock()
+
+	delete(ActiveGames, g.GameCode)
+}
+
 // assumes preferredSide is sent by client. client will default to left if not specified by user
 // handles swapping of domino in order to fit on table.
 // e.g. if left side (top face) of domino is to be played on left end of game table, it needs to be rotated.
@@ -158,7 +175,6 @@ func (g *Game) MakeMove(player *Player, domino *Domino, preferredSide string) {
 		madeValidMove = true
 		for i, p := range g.Players {
 			if p == player {
-				log.Println("this is getting called!!!!!!")
 				g.StartingMove = Move{Domino: domino, PlayerIdx: i}
 			}
 		}

@@ -13,7 +13,7 @@ const backend = "http://localhost:8080"
 const JoinLobby = () => {
   const [gameCode, setGameCode] = useState('');
   const [playerName, setPlayerName] = useState(localStorage.getItem('playerName') || '')
-  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed'))
+  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed') || playerName)
   const [showAlert, setShowAlert] = useState(false);
   const [alertObj, setAlertObj] = useState({severity: 'info', msg: 'Lobby does not exist'});
   const navigate = useNavigate();

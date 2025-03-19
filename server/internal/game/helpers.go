@@ -11,8 +11,8 @@ import (
 // ------- debugging stuff ------- //
 
 func PrintAllLobbyInfo() {
-	if len(Lobbies) > 0 {
-		for gameCode, lobby := range Lobbies {
+	if len(ActiveLobbies) > 0 {
+		for gameCode, lobby := range ActiveLobbies {
 			log.Println("printing lobby info", gameCode)
 			for _, p := range lobby.Players {
 				log.Println("players", p.Name)

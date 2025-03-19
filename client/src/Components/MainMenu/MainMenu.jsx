@@ -13,13 +13,9 @@ const MainMenu = () => {
   const params = useParams()
 
   const [playerName, _] = useState(localStorage.getItem("playerName") || '');
-  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed'))
+  const [avatarSeed, setAvatarSeed] = useState(localStorage.getItem('avatarSeed') || playerName)
 
   const [isCreatingGame, setIsCreatingGame] = useState(false);
-
-  useEffect(() => {
-    setAvatarSeed(localStorage.getItem('avatarSeed') || playerName);
-  }, [playerName]);
 
   const handleCreateGame = async () => {
     setIsCreatingGame(true);

@@ -36,41 +36,65 @@ func markClientDisconnected(clientID string, conn *websocket.Conn) {
 	delete(connections, conn)
 	connectionsMu.Unlock()
 
-	for _, g := range game.ActiveGames {
-		for _, player := range g.Players {
+	for _, l := range game.ActiveLobbies {
+		for _, player := range l.Players {
 			if player.ID == clientID {
-				player.Connected = false
 				log.Println("Player", clientID, "disconnected but not removed. Waiting for reconnection...")
-				go removeClientAfterTimeout(g, player, 15*time.Second)
+				player.Connected = false
+				runningGame := game.ActiveGames[l.GameCode]
+				if runningGame != nil {
+					runningGame.Paused = true
+				}
+				go removeClientAfterTimeout(player, 15*time.Second)
 				return
 			}
 		}
 	}
 }
 
-func removeClientAfterTimeout(g *game.Game, player *game.Player, timeout time.Duration) {
+func removeClientAfterTimeout(player *game.Player, timeout time.Duration) {
 	time.Sleep(timeout)
-	game.ActiveGamesMu.Lock()
-	defer game.ActiveGamesMu.Unlock()
 
 	if !player.Connected {
 		log.Println("Removing player", player.ID, "after timeout")
-		g.LeaveGame(player.ID)
-		l := game.Lobbies[g.GameCode]
-		l.LeaveLobby(player.ID)
+		for _, l := range game.ActiveLobbies {
+			for _ = range l.Players {
+				// first remove from game
+				runningGame := game.ActiveGames[l.GameCode]
+				if runningGame != nil {
+					runningGame.LeaveGame(player.ID)
+					if runningGame.IsEmpty() {
+						runningGame.RemoveFromActiveGames()
+					}
+				}
+				// then remove from lobby
+				l.LeaveLobby(player.ID)
+				if l.IsEmpty() {
+					l.RemoveFromActiveLobbies()
+				}
+			}
+		}
 	}
 }
 
-func checkIfReconnection(conn *websocket.Conn, clientID string) {
+func handleReconnection(conn *websocket.Conn, clientID string) {
 	game.ActiveGamesMu.Lock()
 	defer game.ActiveGamesMu.Unlock()
 
-	for _, l := range game.Lobbies { // iter through games?
+	for _, l := range game.ActiveLobbies {
 		for _, player := range l.Players {
 			if player.ID == clientID {
 				log.Println("Player", clientID, "is reconnecting...")
 				player.Connection = conn
 				player.Connected = true
+
+				gameFromLobby := game.ActiveGames[l.GameCode]
+				// if a game was already started, reconnect and send info
+				if gameFromLobby != nil {
+					gameFromLobby.BroadcastGameInfo()
+					gameFromLobby.Paused = false
+				}
+
 				return
 			}
 		}
@@ -99,7 +123,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	connectionsMu.Unlock()
 
 	// check if client is rejoining
-	checkIfReconnection(conn, clientID)
+	handleReconnection(conn, clientID)
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -240,19 +264,6 @@ func handleSocketMessage(conn *websocket.Conn, msg SocketMessage, clientID strin
 		g.BroadcastGameInfo()
 		g.BroadcastUpdatedGameBoard()
 		g.Paused = false
-
-	case "leave-game": // entirely handled by defer of HandleWebSocket?
-		// payload, payloadOk := msg.Payload.(map[string]interface{})
-		// //_, nameOk := payload["playerName"].(string)
-		// gameCode, codeOk := payload["gameCode"].(string)
-		// if !payloadOk || !codeOk {
-		// 	log.Println("leave-lobby payload is incorrectly formatted")
-		// 	break
-		// }
-		// g := game.GetGame(gameCode)
-		// g.LeaveGame(clientID)
-	// case "make-move":
-	// 	payload, payloadOk := msg.Payload.(map[string]interface{})
 
 	default:
 		log.Println("unknown msg type:", msg.Type, msg.Payload)

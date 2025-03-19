@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 type Lobby struct {
 	GameCode         string
 	Players          []*Player
-	game             *Game
 	heartbeatTimeout time.Duration
 	Mu               sync.Mutex
 }
@@ -27,15 +27,15 @@ type LobbyMessage struct {
 
 // ------------------ Global variables ------------------ //
 
-var LobbiesMu sync.Mutex
-var Lobbies = make(map[string]*Lobby)
+var ActiveLobbiesMu sync.Mutex
+var ActiveLobbies = make(map[string]*Lobby)
 
 // ------------------ Helper functions ------------------ //
 
 // get lobby if it exists, try to create if not
 func GetOrCreateLobby(gameCode ...string) (*Lobby, error) {
-	LobbiesMu.Lock()
-	defer LobbiesMu.Unlock()
+	ActiveLobbiesMu.Lock()
+	defer ActiveLobbiesMu.Unlock()
 
 	var newGameCode string
 	if len(gameCode) > 0 {
@@ -49,7 +49,7 @@ func GetOrCreateLobby(gameCode ...string) (*Lobby, error) {
 		}
 	}
 
-	if lobby, ok := Lobbies[newGameCode]; ok {
+	if lobby, ok := ActiveLobbies[newGameCode]; ok {
 		return lobby, nil
 	}
 
@@ -58,17 +58,33 @@ func GetOrCreateLobby(gameCode ...string) (*Lobby, error) {
 		Players:          make([]*Player, 0),
 		heartbeatTimeout: 120 * time.Second,
 	}
-	Lobbies[newLobby.GameCode] = newLobby
+	ActiveLobbies[newLobby.GameCode] = newLobby
 	return newLobby, nil
 }
 
 // mainly for purposes of deletion, check existence
 // for other reasons, probably use GetOrCreateLobby
 func GetLobby(gameCode string) *Lobby {
-	LobbiesMu.Lock()
-	defer LobbiesMu.Unlock()
-	lobby := Lobbies[gameCode]
+	ActiveLobbiesMu.Lock()
+	defer ActiveLobbiesMu.Unlock()
+	lobby := ActiveLobbies[gameCode]
 	return lobby
+}
+
+func (l *Lobby) RemoveFromActiveLobbies() {
+	ActiveLobbiesMu.Lock()
+	defer ActiveLobbiesMu.Unlock()
+
+	delete(ActiveLobbies, l.GameCode)
+}
+
+func (l *Lobby) IsEmpty() bool {
+	for _, p := range l.Players {
+		if !strings.HasPrefix(p.Name, "Bot-") {
+			return false
+		}
+	}
+	return true
 }
 
 // ------------------ Websocket stuff ------------------ //
